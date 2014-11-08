@@ -8,23 +8,27 @@
   [f & args]
   (apply (apply partial f (butlast args)) (apply concat (last args))))
 
+(defn trace
+  [thing]
+  (println thing) thing)
+
 
 ; This is cause I don't have data.csv right now...
 (defn- raw-read-csv-string
   [csv-str]
-  (-> csv-readable
-      clojure.string/split-lines
-      (map #(clojure.string % #","))))
+  (->> csv-str
+       clojure.string/split-lines
+       (map #(clojure.string/split % #","))))
 
 
-(defn- read-csv-row
+(defn read-csv-row
   "Translates a single row of values into a map of colname -> val, given colnames in header.
   The cast-fn arg should be a vector of translation functions the same length as header and row,
   and will be used to translate the raw string vals in row."
   [header cast-fns row]
   (into
     {}
-    (map 
+    (map
       (fn [rowname cast-fn v] [rowname (cast-fn v)])
       header
       cast-fns
@@ -62,21 +66,25 @@
                                     (when remove-empty
                                       (re-find #"^\s*$" %)))
                                lines-iter)
-        header (read-csv-row (first non-cmnt-lines))
+        header (first (raw-read-csv-string (first non-cmnt-lines)))
         non-cmnt-lines (rest non-cmnt-lines)]
     (map
-      (partial header 
-               (map #(or (cast-fns %) identity) header))
+      (comp
+        (partial read-csv-row
+                 header 
+                 (map #(or (cast-fns %) identity) header))
+        first
+        raw-read-csv-string)
       non-cmnt-lines)))
 
 
 (defn read-csv-file
   [file-or-filename & opts]
   "Read csv in from a filename or file handle. For details see the docstring for read-csv-rows"
-  (if (= (type file-or-filename) java.lang.string)
-    (with-open [f (io/reader filename)]
+  (if (string? file-or-filename)
+    (with-open [f (io/reader file-or-filename)]
       (apply-kwargs read-csv-file f opts))
-    (apply-kwargs read-csv-rows (line-seq f) opts)))
+    (apply-kwargs read-csv-rows (line-seq file-or-filename) opts)))
 
 
 (defn read-csv-str
