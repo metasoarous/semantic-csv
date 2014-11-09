@@ -9,10 +9,6 @@
   [f & args]
   (apply (apply partial f (butlast args)) (apply concat (last args))))
 
-(defn trace
-  [thing]
-  (println thing) thing)
-
 
 (defn read-csv-row
   "Translates a single row of values into a map of colname -> val, given colnames in header.
