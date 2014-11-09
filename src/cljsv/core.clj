@@ -1,5 +1,6 @@
 (ns cljsv.core
-  (:require [clojure.java.io :as io]))
+  (:require [clojure.java.io :as io]
+            [clojure.data.csv :as csv]))
 
 
 (defn- apply-kwargs
@@ -11,14 +12,6 @@
 (defn trace
   [thing]
   (println thing) thing)
-
-
-; This is cause I don't have data.csv right now...
-(defn- raw-read-csv-string
-  [csv-str]
-  (->> csv-str
-       clojure.string/split-lines
-       (map #(clojure.string/split % #","))))
 
 
 (defn read-csv-row
@@ -66,7 +59,7 @@
                                     (when remove-empty
                                       (re-find #"^\s*$" %)))
                                lines-iter)
-        header (first (raw-read-csv-string (first non-cmnt-lines)))
+        header (first (csv/read-csv (first non-cmnt-lines)))
         non-cmnt-lines (rest non-cmnt-lines)]
     (map
       (comp
@@ -74,7 +67,7 @@
                  header 
                  (map #(or (cast-fns %) identity) header))
         first
-        raw-read-csv-string)
+        csv/read-csv)
       non-cmnt-lines)))
 
 
