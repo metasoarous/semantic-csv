@@ -11,6 +11,10 @@
     (is (read-csv-file test-fn)))
   (testing "should work with file handles"
     (is (with-open [f (io/reader test-fn)]
-          (read-csv-file f)))))
+          (doall
+            (read-csv-file f)))))
+  (testing "should have the correct content"
+    (is (some #(= % {"this" "1" "that" "2" "more" "stuff"})
+              (read-csv-file test-fn)))))
 
 

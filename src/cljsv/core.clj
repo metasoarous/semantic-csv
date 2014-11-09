@@ -72,7 +72,8 @@
   "Read csv in from a filename or file handle. For details see the docstring for read-csv-rows"
   (if (string? file-or-filename)
     (with-open [f (io/reader file-or-filename)]
-      (apply-kwargs read-csv-file f opts))
+      (doall
+        (apply-kwargs read-csv-file f opts)))
     (apply-kwargs read-csv-rows (line-seq file-or-filename) opts)))
 
 
