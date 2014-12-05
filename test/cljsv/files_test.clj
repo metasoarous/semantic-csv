@@ -14,7 +14,5 @@
           (doall
             (read-csv-file f)))))
   (testing "should have the correct content"
-    (is (some #(= % {"this" "1" "that" "2" "more" "stuff"})
+    (is (some #(= % {:this "1" :that "2" :more "stuff"})
               (read-csv-file test-fn)))))
-
-
