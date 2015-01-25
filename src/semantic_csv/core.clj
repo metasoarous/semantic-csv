@@ -135,9 +135,9 @@
 ;; rather avoid.]
 
 
-;; ## cast-cols
+;; ## cast-with
 
-(defn cast-cols
+(defn cast-with
   "Casts the vals of each row according to `cast-fns`, which maps `column-name -> casting-fn`."
   [cast-fns rows]
   (map
@@ -150,14 +150,14 @@
     rows))
 
 ;; Note that we have a couple of numeric columns in the play data we've been dealing with.
-;; Let's try casting them as such using `cast-cols`:
+;; Let's try casting them as such using `cast-with`:
 ;;
 ;;     => (with-open [in-file (io/reader "test/test.csv")]
 ;;          (->>
 ;;            (csv/parse-csv in-file)
 ;;            remove-comments
 ;;            mappify
-;;            (cast-cols {:this #(Integer/parseInt %)})
+;;            (cast-with {:this #(Integer/parseInt %)})
 ;;            doall))
 ;;
 ;;     ({:this 1, :that "2", :more "stuff"}
@@ -192,7 +192,7 @@
    (->> rows
         (?>> comment-re (remove-comments comment-re))
         (?>> header (mappify))
-        (?>> cast-fns (cast-cols cast-fns))))
+        (?>> cast-fns (cast-with cast-fns))))
   ; Use all defaults
   ([rows]
    (process {} rows)))
