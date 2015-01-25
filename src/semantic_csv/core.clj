@@ -35,9 +35,11 @@
 ;; To start, require this namespace, as well as the namespace of your favorite CSV parser (e.g.,
 ;; [clojure-csv](https://github.com/davidsantiago/clojure-csv) or 
 ;; [clojure/data.csv](https://github.com/clojure/data.csv); we'll be using the former).
+;; We'll also need `clojure.javas.io`.
 ;; 
 ;;     (require '[semantic-csv.core :as sc]
-;;              '[clojure-csv :as csv])
+;;              '[clojure-csv :as csv]
+;;              '[clojure.java.io :as io])
 ;;
 ;; Now let's take a tour through some of the processing functions we have available.
 
@@ -63,10 +65,22 @@
   (let [header (first rows)]
     (map (partial mappify-row header) (rest rows))))
 
+;; Here's an example to whet our whistle:
+;;
+;;     => (with-open [in-file (io/reader "test/test.csv")]
+;;          (doall
+;;            (->>
+;;              (csv/parse-csv in-file)
+;;              mappify)))
+;;
+;;     ({:this "# some comment lines..."}
+;;      {:this "1", :that "2", :more "stuff"}
+;;      {:this "2", :that "3", :more "other yeah"})
 
 (defn read-csv-rows
   "Given a `lines` collection, produces a seq of maps (`colname -> val`) where the column names are
   based on the first row's values.
+
   * `:header`: bool; consume the first row as a header?
   * `:comment-re`: specify a regular expression to use for commenting out lines, or something falsey
      if this isn't desired
