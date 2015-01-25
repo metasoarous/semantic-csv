@@ -122,6 +122,39 @@
 ;; rather avoid.]
 
 
+;; ## cast-cols
+
+(defn cast-cols
+  "Casts the vals of each row according to `cast-fns`, which maps column-name -> casting-fn."
+  [cast-fns rows]
+  (map
+    (fn [row]
+      (reduce
+        (fn [row [col update-fn]]
+          (update-in row [col] update-fn))
+        row
+        cast-fns))
+    rows))
+
+;; Note that we have a couple of numeric columns in the play data we've been dealing with.
+;; Let's try casting them as such using `cast-cols`:
+;;
+;;     => (with-open [in-file (io/reader "test/test.csv")]
+;;          (doall
+;;            (->>
+;;              (csv/parse-csv in-file)
+;;              remove-comments
+;;              mappify
+;;              (cast-cols {:this #(Integer/parseInt %)}))))
+;;
+;;     ({:this 1, :that "2", :more "stuff"}
+;;      {:this 2, :that "3", :more "other yeah"})
+;;
+;; Lovely :-)
+;;
+;; Note from the implementation here that each row must be associative.
+;; So map or vector rows are fine, but lists or lazy sequences are not.
+
 
 (defn read-csv-rows
   "Given a `lines` collection, produces a seq of maps (`colname -> val`) where the column names are
