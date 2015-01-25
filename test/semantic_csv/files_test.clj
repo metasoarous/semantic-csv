@@ -1,7 +1,7 @@
-(ns cljsv.files-test
+(ns semantic-csv.files-test
   (:require [clojure.test :refer :all]
             [clojure.java.io :as io]
-            [cljsv.core :refer :all]))
+            [semantic-csv.core :refer :all]))
 
 
 (def test-fn "test/test.csv")

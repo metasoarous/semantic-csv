@@ -1,6 +1,6 @@
-(ns cljsv.core-test
+(ns semantic-csv.core-test
   (:require [clojure.test :refer :all]
-            [cljsv.core :refer :all]))
+            [semantic-csv.core :refer :all]))
 
 
 (deftest main-test
