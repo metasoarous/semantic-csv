@@ -198,7 +198,24 @@
 ;;       (doall
 ;;         (process (csv/parse-csv in-file))))
 
+;; ## parse-and-process
+
+(defn parse-and-process
+  "This is a convenience function for reading a csv file using `clojure/data.csv` and passing it through process
+  with the given set of options (specified _last_ as kw_args). Note that `:parser-opts` can be specified and
+  will be passed along to `clojure-csv/parse-csv`"
+  [csv-readable & {:keys [parser-opts]
+                   :or   {parser-opts {}}
+                   :as   opts}]
+  (let [rest-options (dissoc opts :parser-opts)]
+    (process rest-options (impl/apply-kwargs csv/parse-csv csv-readable))))
+
+;; Now we can cut out an extra set of parentheses...
 ;;
+;;     (with-open [in-file (io/reader "test/test.csv")]
+;;       (doall
+;;         (parse-and-process in-file)))
+
 
 
 (defn read-csv-file
