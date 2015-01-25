@@ -217,23 +217,27 @@
 ;;         (parse-and-process in-file)))
 
 
+;; ## slurp-and-process
 
-(defn read-csv-file
-  "Read csv in from a filename or file handle. For details see the docstring for read-csv-rows"
-  [file-or-filename & opts]
-  (if (string? file-or-filename)
-    (with-open [f (io/reader file-or-filename)]
+(defn slurp-and-process
+  "This convenience function let's you `parse-and-process` csv data given a csv filename."
+  [csv-filename & {:as opts}]
+  (let [rest-options (dissoc opts :parser-opts)]
+    (with-open [in-file (io/reader csv-filename)]
       (doall
-        ;; Trying out internal doc
-        (impl/apply-kwargs read-csv-file f opts)))
-    (impl/apply-kwargs read-csv-rows (line-seq file-or-filename) opts)))
+        (impl/apply-kwargs parse-and-process in-file opts)))))
+
+;; And now, for the ultimate in programmer laziness at the sacrifice of _program_ laziness:
+;;
+;;     (slurp-and-process "test/test.csv")
 
 
-(defn read-csv-str
-  "Read csv in from a csv string. For details see the docstring for read-csv-rows"
-  [csv-str & opts]
-  (impl/apply-kwargs read-csv-rows (clojure.string/split-lines csv-str) opts))
-
+;; ## Caveat Emptor...
+;;
+;; But before you go, we encourage you to use the less heavy handed of these methods.
+;; Magick can be nice sometimes, but is best when used in moderation.
+;; And Clojure is all about composability and modularity, so consider this libraries emphasis to be on the
+;; individual, single goal processing functions.
 
 
 ;; # Some parsing functions for your convenience
