@@ -13,3 +13,13 @@
     (apply concat (last args))))
 
 
+(defn stringify-keyword
+  "Leaves strings alone. Turns keywords into the stringified version of the keyword, sans the initial `:`
+  character. On anything else, calls str."
+  [x]
+  (cond
+    (string? x)   x
+    (keyword? x)  (->> x str (drop 1) (apply str))
+    :else         (str x)))
+
+

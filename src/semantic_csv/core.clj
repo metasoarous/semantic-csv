@@ -267,6 +267,63 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-;; # TODO
+;; As with the input processing functions, the output processing functions are designed to be small, modular
+;; peices you compose as you see fit.
+;; Using these it's expected that you push your data through the processing functions and into a third party
+;; writer.
+;; But also as with the readers, we offer some higher level, default-opinionated, configurable functions that
+;; do this composing for you, while the emphasis of the library remains with the composable functions.
+;;
+;; One of the first things we'll need is a function that takes a sequence of maps and turns it into a sequence
+;; of vectors given column name order:
 
+;; ## vectorify
+
+(defn vectorify
+  "Take a sequence of maps, and transform them into a sequence of vectors. Options:
+
+  * `:header` - The header to be used. If not specified, this defaults to `(-> data first keys)`. Only
+    values corresponding to the specified header will be included in the output, and will be included in the
+    order corresponding to this argument.
+  * `:prepend-header` - Defaults to true, and controls whether the `:header` vector should be prepended
+    to the output sequence.
+  * `:format-header` - If specified, this function will be called on each element of the `:header` vector, and
+    the result prepended to the output sequence. The default behaviour is to leave strings alone but stringify
+    keyword names such that the `:` is removed from their string representation. Passing a falsey value will
+    leave the header unaltered in the output."
+  ([data]
+   (vectorify {} data))
+  ([{:keys [header prepend-header format-header]
+     :or {prepend-header true format-header impl/stringify-keyword}}
+    data]
+   ;; Grab the specified header, or the keys from the first data item. We'll
+   ;; use these to `get` the appropriate values for each row.
+   (let [header     (or header (-> data first keys))
+         ;; This will be the formatted version we prepend if desired
+         out-header (if format-header (mapv format-header header) header)]
+     (println out-header)
+     (->> data
+          (map
+            (fn [row] (mapv (partial get row) header)))
+          (?>> prepend-header (cons out-header))))))
+
+
+;; Let's see this in action:
+;;
+;;    => (let [data [{:this "a" :that "b"}
+;;                   {:this "x" :that "y"}]]
+;;         (vectorify data))
+;;    (["this" "that"]
+;;     ["a" "b"]
+;;     ["x" "y"])
+;;
+;; With some options:
+;;
+;;    => (let [data [{:this "a" :that "b"}
+;;                   {:this "x" :that "y"}]]
+;;         (vectorify {:header [:that :this]
+;;                     :preprend-header false}
+;;                    data))
+;;    (["b" "a"]
+;;     ["y" "x"])
 
