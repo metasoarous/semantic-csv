@@ -32,42 +32,46 @@ Then run `lein git-deps` and you should be good to go.
 
 ## Usage
 
+Please see [metasoarous.github.io/semantic-csv](http://metasoarous.github.io/semantic-csv) for complete documentation.
+
 **Note: This will be evolving rapidly! In particular, I'll be decomposing the API into individual functions which give you each of the features separately, but probably still offer a function that does all the magic for you.**
 
-There are two functions to work with at the moment: `read-csv-file` and `read-csv-str`.
-They each support a number of options
-
-* `:header` - bool; consume the first row as a header?
-* `:comment-re` - specify a regular expression to use for commenting out lines, or something falsey if this isn't desired
-* `:remove-empty` - also remove empty rows?
-* `:cast-fns` - optionally cast the vals in the map by applying the corresponding function in (cast-fns row-name) to the string val"
-
-The `read-csv-file` function will take as it's first argument either a filename string or a file handle.
-Note that parsing is eager if a filename string is passed, but lazy if a handle is passed.
-
-### Example
+The _emphasized_ usage of `semantic-csv` involves using individual processing functions on the output of a grammatical csv parser such as `clojure.data.csv` or `clojure-csv`.
+This reflects a nice decoupling of grammar and semantics.
 
 ```clojure
-(require '[clojure.java.io :as io]
-         '[semantic-csv.core :as csv])
+=> (require '[clojure.java.io :as io]
+            '[clojure-csv :as csv]
+            '[semantic-csv :as sc])
+=> (with-open [in-file (io/reader "test/test.csv")]
+     (doall
+       (->>
+         (csv/parse-csv in-file)
+         sc/remove-comments
+         sc/mappify
+         (sc/cast-cols {:this sc/->int}))))
 
-; Simple example
-(with-open [f (io/reader "test/test.csv")]
-  (doall
-    (for [row (csv/read-csv-file f)]
-      (:more row)))) ; uh... (get row "more") actually... though, I'll be fixing soon
-:;=> ("stuff", "other yeah")
+({:this 1, :that "2", :more "stuff"}
+ {:this 2, :that "3", :more "other yeah"})
 ```
 
-And demoing `cast-fns`:
+However, while this nice decoupled API is emphasized, we provide some opinionated, but configurable convenience functions for automating some of this.
 
 ```clojure
-(with-open [f (io/reader "test/test.csv")]
+(with-open [in-file (io/reader "test/test.csv")]
   (doall
-    (for [row (csv/read-csv-file f :cast-fns {:this csv/->int})]
-      (:this row))))
-:;=> (1, 2)
+    (process (csv/parse-csv in-file))))
 ```
+And for the truly irreverant... (who don't need _computer_ laziness):
+
+```clojure
+(slurp-and-process "test/test.csv")
+```
+### Writing CSV data
+
+As with the reader processing functions, the writer processing functions come in modular peices you can use as you see fit.
+
+**TODO: WIP**
 
 ## License
 
