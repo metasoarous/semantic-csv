@@ -1,6 +1,6 @@
 # Semantic CSV
 
-[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/metasoarous/cljsv?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/metasoarous/semantic-csv?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 A Clojure library with higher level CSV parsing functionality.
 
