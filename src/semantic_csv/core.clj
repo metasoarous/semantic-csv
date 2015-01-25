@@ -208,7 +208,9 @@
                    :or   {parser-opts {}}
                    :as   opts}]
   (let [rest-options (dissoc opts :parser-opts)]
-    (process rest-options (impl/apply-kwargs csv/parse-csv csv-readable))))
+    (process
+      rest-options
+      (impl/apply-kwargs csv/parse-csv csv-readable))))
 
 ;; Now we can cut out an extra set of parentheses...
 ;;
@@ -227,9 +229,11 @@
       (doall
         (impl/apply-kwargs parse-and-process in-file opts)))))
 
-;; And now, for the ultimate in programmer laziness at the sacrifice of _program_ laziness:
+;; And now, for the ultimate in _programmer_ laziness at the sacrifice of _program_ laziness:
 ;;
 ;;     (slurp-and-process "test/test.csv")
+
+;; <br/>
 
 
 ;; ## Caveat Emptor...
@@ -238,6 +242,9 @@
 ;; Magick can be nice sometimes, but is best when used in moderation.
 ;; And Clojure is all about composability and modularity, so consider this libraries emphasis to be on the
 ;; individual, single goal processing functions.
+
+
+;; <br/>
 
 
 ;; # Some parsing functions for your convenience
