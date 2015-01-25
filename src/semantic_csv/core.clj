@@ -75,9 +75,13 @@
 (defn mappify
   "Comsumes the first item as a header, and returns a seq of the remaining items as a maps with the header
   values as keys (see mappify-row)."
-  [rows]
-  (let [header (first rows)]
-    (map (partial mappify-row header) (rest rows))))
+  ([rows]
+   (mappify {} rows))
+  ([{:keys [keyify] :or {keyify true} :as opts}
+    rows]
+   (let [header (first rows)
+         header (if keyify (mapv keyword header) header)]
+     (map (partial mappify-row header) (rest rows)))))
 
 ;; Here's an example to whet our whistle:
 ;;
