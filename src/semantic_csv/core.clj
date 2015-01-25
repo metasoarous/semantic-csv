@@ -25,13 +25,6 @@
             [clojure.data.csv :as csv]))
 
 
-(defn- apply-kwargs
-  "Takes a function f, any number of regular args, and a final kw-args argument which will be
-  splatted in as a final argument"
-  [f & args]
-  (apply (apply partial f (butlast args)) (apply concat (last args))))
-
-
 (defn read-csv-row
   "Translates a single row of values into a map of `colname -> val`, given colnames in header.
   The cast-fn arg should be a vector of translation functions the same length as header and row,
@@ -85,14 +78,14 @@
   (if (string? file-or-filename)
     (with-open [f (io/reader file-or-filename)]
       (doall
-        (apply-kwargs read-csv-file f opts)))
-    (apply-kwargs read-csv-rows (line-seq file-or-filename) opts)))
+        (impl/apply-kwargs read-csv-file f opts)))
+    (impl/apply-kwargs read-csv-rows (line-seq file-or-filename) opts)))
 
 
 (defn read-csv-str
   "Read csv in from a csv string. For details see the docstring for read-csv-rows"
   [csv-str & opts]
-  (apply-kwargs read-csv-rows (clojure.string/split-lines csv-str) opts))
+  (impl/apply-kwargs read-csv-rows (clojure.string/split-lines csv-str) opts))
 
 
 
