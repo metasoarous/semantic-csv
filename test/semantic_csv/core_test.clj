@@ -15,3 +15,22 @@
              {"this" "x" "that" "y"})))))
 
 
+(deftest casting-test
+  (let [data [["this" "that"]
+              ["1" "y"]]]
+    (testing "should work with mappify"
+      (is (= (->> data
+                  mappify
+                  (cast-cols {:this ->int})
+                  first)
+             {:this 1 :that "y"}))))
+  (let [data [["1" "this"]
+              ["2" "that"]]]
+    (testing "should work without mappify"
+      (is (= (->> data
+                  (cast-cols {0 ->int})
+                  second)
+             [2 "that"])))))
+
+
+
