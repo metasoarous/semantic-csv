@@ -1,5 +1,5 @@
 (defproject semantic-csv "0.1.0-SNAPSHOT"
-  :description "A high level CSV parsing abstraction for clojure."
+  :description "A Clojure library with higher level CSV parsing functionality"
   :url "http://github.com/metasoarous/semantic-csv"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
