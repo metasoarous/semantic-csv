@@ -30,7 +30,8 @@
 (ns semantic-csv.core
   "# Core API namespace"
   (:require [clojure.java.io :as io]
-            [clojure-csv :as csv]
+            [clojure-csv.core :as csv]
+            [semantic-csv.impl.core :as impl]
             [plumbing.core :as pc :refer [?>>]]))
 
 
@@ -39,7 +40,7 @@
 ;; [clojure/data.csv](https://github.com/clojure/data.csv); we'll be using the former).
 ;; 
 ;;     (require '[semantic-csv.core :refer :all]
-;;              '[clojure-csv :as csv]
+;;              '[clojure-csv.core :as csv]
 ;;              '[clojure.java.io :as io])
 ;;
 ;; Now let's take a tour through some of the processing functions we have available, starting with the reader
