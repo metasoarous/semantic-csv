@@ -52,7 +52,7 @@ This reflects a nice decoupling of grammar and semantics, in an effort to make t
        sc/remove-comments
        sc/mappify
        (sc/cast-cols {:this sc/->int})
-       doall)))
+       doall))
 
 ({:this 1, :that "2", :more "stuff"}
  {:this 2, :that "3", :more "other yeah"})
