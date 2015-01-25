@@ -29,7 +29,8 @@
 (ns semantic-csv.core
   "# Core API namespace"
   (:require [clojure.java.io :as io]
-            [clojure.data.csv :as csv]))
+            [clojure-csv :as csv]
+            [plumbing.core :as pc :refer [?>>]]))
 
 
 ;; To start, require this namespace, as well as the namespace of your favorite CSV parser (e.g.,
@@ -156,56 +157,94 @@
 ;; So map or vector rows are fine, but lists or lazy sequences are not.
 
 
-(defn read-csv-rows
-  "Given a `lines` collection, produces a seq of maps (`colname -> val`) where the column names are
-  based on the first row's values.
+;; ## A note on these processing functions...
+;;
+;; Note that all of these processing functions leave the rows collection as the final argument.
+;; This is to facilitate the use of threading macros in your CSV processing.
+;; You're welcome.
+
+
+;; ## process
+
+(defn process
+  "This function wraps together all of the various input processing capabilities into one, with options
+  controlled by an opts hash with a heavy-handed/opinionated set of defaults:
 
   * `:header`: bool; consume the first row as a header?
   * `:comment-re`: specify a regular expression to use for commenting out lines, or something falsey
-     if this isn't desired
-  * `:remove-empty`: also remove empty rows?
+     if filtering out comment lines is not desired.
+  * `:remove-empty`: also remove empty rows? Defaults to true.
   * `:cast-fns`: optional map of `colname | index -> cast-fn`; row maps will have the values as output by the
      assigned `cast-fn`.
               `(cast-fns row-name)` to the string val"
-  [lines & {:keys [comment-re header remove-empty cast-fns]
-                 :or   {comment-re   #"^\#"
-                        header       true
-                        remove-empty true
-                        cast-fns     {}}
-                 :as opts}]
-  (let [non-cmnt-lines (remove #(or (when comment-re
-                                      (re-find comment-re %))
-                                    (when remove-empty
-                                      (re-find #"^\s*$" %)))
-                               lines)
-        header (first (csv/read-csv (first non-cmnt-lines)))
-        non-cmnt-lines (rest non-cmnt-lines)]
-    (map
-      (comp
-        (partial read-csv-row
-                 header 
-                 (map #(or (cast-fns %) identity) header))
-        first
-        csv/read-csv)
-      non-cmnt-lines)))
+  ([{:keys [comment-re header remove-empty cast-fns]
+                  :or   {comment-re   #"^\#"
+                         header       true
+                         remove-empty true
+                         cast-fns     {}}
+                  :as opts}
+    rows]
+   (->> rows
+        (?>> comment-re (remove-comments comment-re))
+        (?>> header (mappify))
+        (?>> cast-fns (cast-cols cast-fns))))
+  ; Use all defaults
+  ([rows]
+   (process {} rows)))
+
+;; Using this function, the code we've been building above is reduced to the following:
+;;
+;;     (with-open [in-file (io/reader "test/test.csv")]
+;;       (doall
+;;         (process (csv/parse-csv in-file))))
+
+;; ## parse-and-process
+
+(defn parse-and-process
+  "This is a convenience function for reading a csv file using `clojure/data.csv` and passing it through process
+  with the given set of options (specified _last_ as kw_args). Note that `:parser-opts` can be specified and
+  will be passed along to `clojure-csv/parse-csv`"
+  [csv-readable & {:keys [parser-opts]
+                   :or   {parser-opts {}}
+                   :as   opts}]
+  (let [rest-options (dissoc opts :parser-opts)]
+    (process
+      rest-options
+      (impl/apply-kwargs csv/parse-csv csv-readable))))
+
+;; Now we can cut out an extra set of parentheses...
+;;
+;;     (with-open [in-file (io/reader "test/test.csv")]
+;;       (doall
+;;         (parse-and-process in-file)))
 
 
-(defn read-csv-file
-  "Read csv in from a filename or file handle. For details see the docstring for read-csv-rows"
-  [file-or-filename & opts]
-  (if (string? file-or-filename)
-    (with-open [f (io/reader file-or-filename)]
+;; ## slurp-and-process
+
+(defn slurp-and-process
+  "This convenience function let's you `parse-and-process` csv data given a csv filename."
+  [csv-filename & {:as opts}]
+  (let [rest-options (dissoc opts :parser-opts)]
+    (with-open [in-file (io/reader csv-filename)]
       (doall
-        ;; Trying out internal doc
-        (impl/apply-kwargs read-csv-file f opts)))
-    (impl/apply-kwargs read-csv-rows (line-seq file-or-filename) opts)))
+        (impl/apply-kwargs parse-and-process in-file opts)))))
+
+;; And now, for the ultimate in _programmer_ laziness at the sacrifice of _program_ laziness:
+;;
+;;     (slurp-and-process "test/test.csv")
+
+;; <br/>
 
 
-(defn read-csv-str
-  "Read csv in from a csv string. For details see the docstring for read-csv-rows"
-  [csv-str & opts]
-  (impl/apply-kwargs read-csv-rows (clojure.string/split-lines csv-str) opts))
+;; ## Caveat Emptor...
+;;
+;; But before you go, we encourage you to use the less heavy handed of these methods.
+;; Magick can be nice sometimes, but is best when used in moderation.
+;; And Clojure is all about composability and modularity, so consider this libraries emphasis to be on the
+;; individual, single goal processing functions.
 
+
+;; <br/>
 
 
 ;; # Some parsing functions for your convenience
@@ -228,4 +267,5 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
+;; # TODO
 
