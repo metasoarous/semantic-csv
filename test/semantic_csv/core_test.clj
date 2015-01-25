@@ -8,3 +8,5 @@
     (let [parsed (read-csv-str "this,that\na,b\nc,d")]
       (is (= (first parsed) {:this "a" :that "b"}))
       (is (= (second parsed) {:this "c" :that "d"})))))
+
+
