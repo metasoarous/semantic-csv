@@ -13,7 +13,7 @@
 ;; * When reading, apply casting functions on a column by column basis (for casting to ints, floats, etc) via `:cast-fns`
 ;; * When writing, apply formatting functions on a column by column basis via `:format-fns`, when `str` won't cut it
 ;; * Remove lines starting with comment characters (by default `#`)
-;; * An optional "sniffer" that reads in N lines, and uses them to guess column types (SOON)
+;; * A "sniffer" that reads in N lines, and uses them to guess column types (SOON)
 ;;
 ;; ## Structure
 ;;
@@ -32,29 +32,36 @@
             [clojure.data.csv :as csv]))
 
 
-;; To start, require this namespace, as well as the namespace of your favorite CSV parser (see
-;; additional processing on top of the output of a more stipped down CSV parser (for example,
-;; `[clojure-csv](https://github.com/davidsantiago/clojure-csv)` or 
-;; `[clojure-csv](https://github.com/clojure/data.csv)`; we'll be using the former).
+;; To start, require this namespace, as well as the namespace of your favorite CSV parser (e.g.,
+;; [clojure-csv](https://github.com/davidsantiago/clojure-csv) or 
+;; [clojure/data.csv](https://github.com/clojure/data.csv); we'll be using the former).
 ;; 
-;; ```(require '[semantic-csv.core :as sc]
-;;             '[clojure-csv :as csv])```
+;;     (require '[semantic-csv.core :as sc]
+;;              '[clojure-csv :as csv])
 ;;
 ;; Now let's take a tour through some of the processing functions we have available.
 
 
-(defn read-csv-row
-  "Translates a single row of values into a map of `colname -> val`, given colnames in `header`.
-  The cast-fn arg should be a vector of translation functions the same length as header and row,
-  and will be used to translate the raw string vals in row."
-  [header cast-fns row]
-  (into
-    {}
-    (map
-      (fn [rowname cast-fn v] [rowname (cast-fn v)])
-      header
-      cast-fns
-      row)))
+;; ## mappify-row
+
+(defn mappify-row
+  "Translates a single row of values into a map of `colname -> val`, given colnames in `header`."
+  [header row]
+  (into {} (map vector header row)))
+
+;; We leave this in the main API as a courtesy in case you'd like to map lines over this function in your own
+;; fashion.
+;; However, in general, you'll want to use the following function:
+
+
+;; ## mappify-csv-rows
+
+(defn mappify
+  "Comsumes the first item as a header, and returns a seq of the remaining items as a maps with the header
+  values as keys (see mappify-row)."
+  [rows]
+  (let [header (first rows)]
+    (map (partial mappify-row header) (rest rows))))
 
 
 (defn read-csv-rows
