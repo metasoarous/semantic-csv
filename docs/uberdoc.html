@@ -2868,59 +2868,64 @@ net.brehaut.ClojureTools = (function (SH) {
 </script><title>semantic-csv -- Marginalia</title></head><body><table><tr><td class="docs"><div class="header"><h1 class="project-name"><a href="http://github.com/metasoarous/semantic-csv">semantic-csv</a></h1><h2 class="project-version">0.1.0-SNAPSHOT</h2><br /><p>A Clojure library with higher level CSV parsing functionality</p>
 </div><div class="dependencies"><h3>dependencies</h3><table><tr><td class="dep-name">org.clojure/clojure</td><td class="dotted"><hr /></td><td class="dep-version">1.5.1</td></tr><tr><td class="dep-name">org.clojure/tools.trace</td><td class="dotted"><hr /></td><td class="dep-version">0.7.8</td></tr><tr><td class="dep-name">clojure-csv/clojure-csv</td><td class="dotted"><hr /></td><td class="dep-version">2.0.1</td></tr><tr><td class="dep-name">prismatic/plumbing</td><td class="dotted"><hr /></td><td class="dep-version">0.3.5</td></tr></table></div></td><td class="codes" style="text-align: center; vertical-align: middle;color: #666;padding-right:20px"><br /><br /><br />(this space intentionally left almost blank)</td></tr><tr><td class="docs"><div class="toc"><a name="toc"><h3>namespaces</h3></a><ul><li><a href="#semantic-csv.core">semantic-csv.core</a></li><li><a href="#semantic-csv.impl.core">semantic-csv.impl.core</a></li></ul></div></td><td class="codes">&nbsp;</td></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#semantic-csv.core" name="semantic-csv.core"><h1 class="project-name">semantic-csv.core</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><h1>Higher level CSV parsing functionality</h1>
 
-<p>The most popular CSV parsing libraries for Clojure presently -- <code>clojure.data.csv</code> and <code>clojure-csv</code> -- are really focused on handling the <em>syntax</em> of CSV;
-They take CSV text and transform it into collections of row vectors of string values, providing a minimal translation into the world of data.
-Semantic CSV takes it the next step by giving you tools for addressing the <em>semantics</em> of your data, helping you put it into the form that better reflects what it means, and what's most useful for you.</p>
+<p>The two most popular CSV parsing libraries for Clojure presently - <code>clojure.data.csv</code> and <code>clojure-csv</code> -
+concern themselves only wtih the <em>syntax</em> of CSV;
+They take CSV text, transform it into a collection of vectors of string values, and nothing more.
+Semantic CSV takes the next step by giving you tools for addressing the <em>semantics</em> of your data, helping you put it into the form that better reflects what it means, and what's most useful for you.</p>
 
 <h2>Features</h2>
 
-<p>To be less abstract about it, <code>semantic-csv</code> lets you easily:</p>
-
 <ul>
 <li>Absorb header row as a vector of column names, and return remaining rows as maps of <code>column-name -&gt; row-val</code></li>
-<li>Write from a collection of maps, given a pre-specified <code>:header</code></li>
-<li>When reading, apply casting functions on a column by column basis (for casting to ints, floats, etc) via <code>:cast-fns</code></li>
-<li>When writing, apply formatting functions on a column by column basis via <code>:format-fns</code>, when <code>str</code> won't cut it</li>
+<li>Write from a collection of maps, given a header</li>
+<li>When reading, apply casting functions by column name</li>
+<li>When writing, apply formatting functions by column name</li>
 <li>Remove lines starting with comment characters (by default <code>#</code>)</li>
-<li>A "sniffer" that reads in N lines, and uses them to guess column types (SOON)</li>
+<li>Fully compatible with any CSV parsing library that retruning/writing a sequence of row vectors</li>
+<li>(SOON) A "sniffer" that reads in N lines, and uses them to guess column types</li>
 </ul>
 
 <h2>Structure</h2>
 
-<p>Semantic CSV consists of a number of functions which perform separate processing steps towards your final
-destination.
-This is in the spirit of making the API as composable and interoperable as possible.
-However, we also offer a magick sauce "do everything for me without making me think" function for the
-impatient (see later).</p>
+<p>Semantic CSV <em>emphasizes</em> a number of individual processing functions which can operate on the output of a
+syntactic csv parser such as <code>clojure.data.csv</code> or <code>clojure-csv</code>.
+This reflects a nice decoupling of grammar and semantics, in an effort to make this library as composable
+and interoperable as possible.
+However, as a convenience, we offer a few functions which wrap these individual steps with a set of
+opinionated defaults and an option map for overriding the default behaviour.</p>
 
 <p><br/></p>
 </td><td class="codes"></td></tr><tr><td class="docs"><h1>Core API namespace</h1>
 </td><td class="codes"><pre class="brush: clojure">(ns semantic-csv.core
   (:require [clojure.java.io :as io]
             [clojure-csv :as csv]
-            [plumbing.core :as pc :refer [?&gt;&gt;]]))</pre></td></tr><tr><td class="docs"><p>To start, require this namespace, as well as the namespace of your favorite CSV parser (e.g.,
+            [plumbing.core :as pc :refer [?&gt;&gt;]]))</pre></td></tr><tr><td class="docs"><p>To start, require this namespace, <code>clojure.java.io</code>, and your favorite CSV parser (e.g.,
 <a href="https://github.com/davidsantiago/clojure-csv">clojure-csv</a> or 
-<a href="https://github.com/clojure/data.csv">clojure/data.csv</a>; we'll be using the former).
-We'll also need <code>clojure.javas.io</code>.</p>
+<a href="https://github.com/clojure/data.csv">clojure/data.csv</a>; we'll be using the former).</p>
 
-<pre><code>(require '[semantic-csv.core :as sc]
+<pre><code>(require '[semantic-csv.core :refer :all]
          '[clojure-csv :as csv]
          '[clojure.java.io :as io])
 </code></pre>
 
 <p>Now let's take a tour through some of the processing functions we have available, starting with the reader
 functions.</p>
-</td><td class="codes"></td></tr><tr><td class="docs"><p><br/></p>
+
+<p><br/></p>
 </td><td class="codes"></td></tr><tr><td class="docs"><h1>Reader functions</h1>
 
-<h2>mappify-row</h2>
+<p>Note that all of these processing functions leave the rows collection as the final argument.
+This is to make these functions interoperable with other standard collection processing functions (<code>map</code>,
+<code>filter</code>, <code>take</code>, etc.) in the context of the <code>-&gt;&gt;</code> threading macro.
+You're welcome.</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><h2>mappify-row</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Translates a single row of values into a map of <code>colname -&gt; val</code>, given colnames in <code>header</code>.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn mappify-row
   [header row]
   (into {} (map vector header row)))</pre></td></tr><tr><td class="docs"><p>We leave this in the main API as a courtesy in case you'd like to map lines over this function in your own
 fashion.
-However, in general, you'll want to use the following function:</p>
-</td><td class="codes"></td></tr><tr><td class="docs"><h2>mappify-csv-rows</h2>
+However, in general, you'll want to use the following instead:</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><h2>mappify</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Comsumes the first item as a header, and returns a seq of the remaining items as a maps with the header
   values as keys (see mappify-row).</p>
 </td><td class="codes"><pre class="brush: clojure">(defn mappify
@@ -2929,10 +2934,10 @@ However, in general, you'll want to use the following function:</p>
     (map (partial mappify-row header) (rest rows))))</pre></td></tr><tr><td class="docs"><p>Here's an example to whet our whistle:</p>
 
 <pre><code>=&gt; (with-open [in-file (io/reader "test/test.csv")]
-     (doall
-       (-&gt;&gt;
-         (csv/parse-csv in-file)
-         mappify)))
+     (-&gt;&gt;
+       (csv/parse-csv in-file)
+       mappify
+       doall))
 
 ({:this "# some comment lines..."}
  {:this "1", :that "2", :more "stuff"}
@@ -2955,11 +2960,11 @@ We can solve this with the following function:</p>
            (re-find comment-re x)))))))</pre></td></tr><tr><td class="docs"><p>Let's see this in action with the above code:</p>
 
 <pre><code>=&gt; (with-open [in-file (io/reader "test/test.csv")]
-     (doall
-       (-&gt;&gt;
-         (csv/parse-csv in-file)
-         remove-comments
-         mappify)))
+     (-&gt;&gt;
+       (csv/parse-csv in-file)
+       remove-comments
+       mappify
+       doall))
 
 ({:this "1", :that "2", :more "stuff"}
  {:this "2", :that "3", :more "other yeah"})
@@ -2970,10 +2975,10 @@ We can solve this with the following function:</p>
 <p>[<strong>Sidenote</strong>: it feels awkward to me that this operates <em>after</em> the initial parsing step has already taken
 place.
 However, it's not clear how you would do this safely;
-It seems you have to make assumptions about how  things are going into the parsing function, which I'd
+It seems you have to make assumptions about how things are going into the parsing function, which I'd
 rather avoid.]</p>
 </td><td class="codes"></td></tr><tr><td class="docs"><h2>cast-cols</h2>
-</td><td class="codes"></td></tr><tr><td class="docs"><p>Casts the vals of each row according to <code>cast-fns</code>, which maps column-name -> casting-fn.</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Casts the vals of each row according to <code>cast-fns</code>, which maps <code>column-name -&gt; casting-fn</code>.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn cast-cols
   [cast-fns rows]
   (map
@@ -2987,12 +2992,12 @@ rather avoid.]</p>
 Let's try casting them as such using <code>cast-cols</code>:</p>
 
 <pre><code>=&gt; (with-open [in-file (io/reader "test/test.csv")]
-     (doall
-       (-&gt;&gt;
-         (csv/parse-csv in-file)
-         remove-comments
-         mappify
-         (cast-cols {:this #(Integer/parseInt %)}))))
+     (-&gt;&gt;
+       (csv/parse-csv in-file)
+       remove-comments
+       mappify
+       (cast-cols {:this #(Integer/parseInt %)})
+       doall))
 
 ({:this 1, :that "2", :more "stuff"}
  {:this 2, :that "3", :more "other yeah"})
@@ -3000,13 +3005,8 @@ Let's try casting them as such using <code>cast-cols</code>:</p>
 
 <p>Lovely :-)</p>
 
-<p>Note from the implementation here that each row must be associative.
-So map or vector rows are fine, but lists or lazy sequences are not.</p>
-</td><td class="codes"></td></tr><tr><td class="docs"><h2>A note on these processing functions...</h2>
-
-<p>Note that all of these processing functions leave the rows collection as the final argument.
-This is to facilitate the use of threading macros in your CSV processing.
-You're welcome.</p>
+<p>Note from the implementation here that each row need only be associative.
+So map or vector rows are fine, but lists or lazy sequences would not be.</p>
 </td><td class="codes"></td></tr><tr><td class="docs"><h2>process</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>This function wraps together all of the various input processing capabilities into one, with options
   controlled by an opts hash with a heavy-handed/opinionated set of defaults:</p>
@@ -3038,12 +3038,13 @@ You're welcome.</p>
 
 <pre><code>(with-open [in-file (io/reader "test/test.csv")]
   (doall
-    (process (csv/parse-csv in-file))))
+    (process (csv/parse-csv in-file)
+             :cast-fns {:this #(Integer/parseInt %)})))
 </code></pre>
 </td><td class="codes"></td></tr><tr><td class="docs"><h2>parse-and-process</h2>
-</td><td class="codes"></td></tr><tr><td class="docs"><p>This is a convenience function for reading a csv file using <code>clojure/data.csv</code> and passing it through process
-  with the given set of options (specified <em>last</em> as kw_args). Note that <code>:parser-opts</code> can be specified and
-  will be passed along to <code>clojure-csv/parse-csv</code></p>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>This is a convenience function for reading a csv file using <code>clojure/data.csv</code> and passing it through <code>process</code>
+  with the given set of options (specified <em>last</em> as kw_args, in contrast with our other processing functions).
+  Note that <code>:parser-opts</code> can be specified and will be passed along to <code>clojure-csv/parse-csv</code></p>
 </td><td class="codes"><pre class="brush: clojure">(defn parse-and-process
   [csv-readable &amp; {:keys [parser-opts]
                    :or   {parser-opts {}}
@@ -3051,30 +3052,24 @@ You're welcome.</p>
   (let [rest-options (dissoc opts :parser-opts)]
     (process
       rest-options
-      (impl/apply-kwargs csv/parse-csv csv-readable))))</pre></td></tr><tr><td class="docs"><p>Now we can cut out an extra set of parentheses...</p>
-
-<pre><code>(with-open [in-file (io/reader "test/test.csv")]
+      (impl/apply-kwargs csv/parse-csv csv-readable))))</pre></td></tr><tr><td class="docs"><pre><code>(with-open [in-file (io/reader "test/test.csv")]
   (doall
-    (parse-and-process in-file)))
+    (parse-and-process in-file
+                       :cast-fns {:this #(Integer/parseInt %)})))
 </code></pre>
 </td><td class="codes"></td></tr><tr><td class="docs"><h2>slurp-and-process</h2>
-</td><td class="codes"></td></tr><tr><td class="docs"><p>This convenience function let's you <code>parse-and-process</code> csv data given a csv filename.</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>This convenience function let's you <code>parse-and-process</code> csv data given a csv filename. Note that it is <em>not</em>
+  lazy, and must read in all data so the file handle cna be closed.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn slurp-and-process
   [csv-filename &amp; {:as opts}]
   (let [rest-options (dissoc opts :parser-opts)]
     (with-open [in-file (io/reader csv-filename)]
       (doall
-        (impl/apply-kwargs parse-and-process in-file opts)))))</pre></td></tr><tr><td class="docs"><p>And now, for the ultimate in <em>programmer</em> laziness at the sacrifice of <em>program</em> laziness:</p>
+        (impl/apply-kwargs parse-and-process in-file opts)))))</pre></td></tr><tr><td class="docs"><p>For the ultimate in <em>programmer</em> laziness:</p>
 
-<pre><code>(slurp-and-process "test/test.csv")
+<pre><code>(slurp-and-process "test/test.csv"
+                   :cast-fns {:this #(Integer/parseInt %)})
 </code></pre>
-</td><td class="codes"></td></tr><tr><td class="docs"><p><br/></p>
-</td><td class="codes"></td></tr><tr><td class="docs"><h2>Caveat Emptor...</h2>
-
-<p>But before you go, we encourage you to use the less heavy handed of these methods.
-Magick can be nice sometimes, but is best when used in moderation.
-And Clojure is all about composability and modularity, so consider this libraries emphasis to be on the
-individual, single goal processing functions.</p>
 </td><td class="codes"></td></tr><tr><td class="docs"><p><br/></p>
 </td><td class="codes"></td></tr><tr><td class="docs"><h1>Some parsing functions for your convenience</h1>
 
@@ -3085,7 +3080,10 @@ individual, single goal processing functions.</p>
   (Integer/parseInt string))</pre></td></tr><tr><td class="docs"><p>Translate into float</p>
 </td><td class="codes"><pre class="brush: clojure">(defn -&gt;float
   [string]
-  (Float/parseFloat string))</pre></td></tr><tr><td class="docs"><h1>Writer functions</h1>
+  (Float/parseFloat string))</pre></td></tr><tr><td class="docs"><pre><code>(slurp-and-process "test/test.csv"
+                   :cast-fns {:this -&gt;int})
+</code></pre>
+</td><td class="codes"></td></tr><tr><td class="docs"><h1>Writer functions</h1>
 </td><td class="codes"></td></tr><tr><td class="docs"><h1>TODO</h1>
 </td><td class="codes"></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#semantic-csv.impl.core" name="semantic-csv.impl.core"><h1 class="project-name">semantic-csv.impl.core</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>This namespace consists of implementation details for the main API</p>
 </td><td class="codes"><pre class="brush: clojure">(ns semantic-csv.impl.core)</pre></td></tr><tr><td class="docs"><p>Utility that takes a function f, any number of regular args, and a final kw-args argument which will be
