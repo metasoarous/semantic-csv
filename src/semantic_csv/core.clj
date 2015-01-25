@@ -30,7 +30,8 @@
 (ns semantic-csv.core
   "# Core API namespace"
   (:require [clojure.java.io :as io]
-            [clojure-csv :as csv]
+            [clojure-csv.core :as csv]
+            [semantic-csv.impl.core :as impl]
             [plumbing.core :as pc :refer [?>>]]))
 
 
@@ -39,7 +40,7 @@
 ;; [clojure/data.csv](https://github.com/clojure/data.csv); we'll be using the former).
 ;; 
 ;;     (require '[semantic-csv.core :refer :all]
-;;              '[clojure-csv :as csv]
+;;              '[clojure-csv.core :as csv]
 ;;              '[clojure.java.io :as io])
 ;;
 ;; Now let's take a tour through some of the processing functions we have available, starting with the reader
@@ -74,9 +75,13 @@
 (defn mappify
   "Comsumes the first item as a header, and returns a seq of the remaining items as a maps with the header
   values as keys (see mappify-row)."
-  [rows]
-  (let [header (first rows)]
-    (map (partial mappify-row header) (rest rows))))
+  ([rows]
+   (mappify {} rows))
+  ([{:keys [keyify] :or {keyify true} :as opts}
+    rows]
+   (let [header (first rows)
+         header (if keyify (mapv keyword header) header)]
+     (map (partial mappify-row header) (rest rows)))))
 
 ;; Here's an example to whet our whistle:
 ;;
@@ -106,7 +111,8 @@
      (fn [row]
        (let [x (first row)]
          (when x
-           (re-find comment-re x)))))))
+           (re-find comment-re x))))
+     rows)))
 
 ;; Let's see this in action with the above code:
 ;;
@@ -210,7 +216,7 @@
   (let [rest-options (dissoc opts :parser-opts)]
     (process
       rest-options
-      (impl/apply-kwargs csv/parse-csv csv-readable))))
+      (impl/apply-kwargs csv/parse-csv csv-readable parser-opts))))
 
 ;;     (with-open [in-file (io/reader "test/test.csv")]
 ;;       (doall
@@ -262,4 +268,5 @@
 
 
 ;; # TODO
+
 

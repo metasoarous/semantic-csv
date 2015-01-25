@@ -40,7 +40,7 @@ Then run `lein git-deps` and you should be good to go.
 Please see [metasoarous.github.io/semantic-csv](http://metasoarous.github.io/semantic-csv) for complete documentation.
 
 Semantic CSV _emphasizes_ a number of individual processing functions which can operate on the output of a syntactic csv parser such as `clojure.data.csv` or `clojure-csv`.
-This reflects a nice decoupling of grammar and semantics, making this library as composable and interoperable as possible.
+This reflects a nice decoupling of grammar and semantics, in an effort to make this library as composable and interoperable as possible.
 
 ```clojure
 => (require '[clojure.java.io :as io]
@@ -52,7 +52,7 @@ This reflects a nice decoupling of grammar and semantics, making this library as
        sc/remove-comments
        sc/mappify
        (sc/cast-cols {:this sc/->int})
-       doall)))
+       doall))
 
 ({:this 1, :that "2", :more "stuff"}
  {:this 2, :that "3", :more "other yeah"})

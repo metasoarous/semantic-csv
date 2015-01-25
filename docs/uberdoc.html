@@ -2866,7 +2866,7 @@ net.brehaut.ClojureTools = (function (SH) {
   };
 })(SyntaxHighlighter);
 </script><title>semantic-csv -- Marginalia</title></head><body><table><tr><td class="docs"><div class="header"><h1 class="project-name"><a href="http://github.com/metasoarous/semantic-csv">semantic-csv</a></h1><h2 class="project-version">0.1.0-SNAPSHOT</h2><br /><p>A Clojure library with higher level CSV parsing functionality</p>
-</div><div class="dependencies"><h3>dependencies</h3><table><tr><td class="dep-name">org.clojure/clojure</td><td class="dotted"><hr /></td><td class="dep-version">1.5.1</td></tr><tr><td class="dep-name">org.clojure/tools.trace</td><td class="dotted"><hr /></td><td class="dep-version">0.7.8</td></tr><tr><td class="dep-name">clojure-csv/clojure-csv</td><td class="dotted"><hr /></td><td class="dep-version">2.0.1</td></tr><tr><td class="dep-name">prismatic/plumbing</td><td class="dotted"><hr /></td><td class="dep-version">0.3.5</td></tr></table></div></td><td class="codes" style="text-align: center; vertical-align: middle;color: #666;padding-right:20px"><br /><br /><br />(this space intentionally left almost blank)</td></tr><tr><td class="docs"><div class="toc"><a name="toc"><h3>namespaces</h3></a><ul><li><a href="#semantic-csv.core">semantic-csv.core</a></li><li><a href="#semantic-csv.impl.core">semantic-csv.impl.core</a></li></ul></div></td><td class="codes">&nbsp;</td></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#semantic-csv.core" name="semantic-csv.core"><h1 class="project-name">semantic-csv.core</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><h1>Higher level CSV parsing functionality</h1>
+</div><div class="dependencies"><h3>dependencies</h3><table><tr><td class="dep-name">org.clojure/clojure</td><td class="dotted"><hr /></td><td class="dep-version">1.5.1</td></tr><tr><td class="dep-name">clojure-csv/clojure-csv</td><td class="dotted"><hr /></td><td class="dep-version">2.0.1</td></tr><tr><td class="dep-name">prismatic/plumbing</td><td class="dotted"><hr /></td><td class="dep-version">0.3.5</td></tr></table></div></td><td class="codes" style="text-align: center; vertical-align: middle;color: #666;padding-right:20px"><br /><br /><br />(this space intentionally left almost blank)</td></tr><tr><td class="docs"><div class="toc"><a name="toc"><h3>namespaces</h3></a><ul><li><a href="#semantic-csv.core">semantic-csv.core</a></li><li><a href="#semantic-csv.impl.core">semantic-csv.impl.core</a></li></ul></div></td><td class="codes">&nbsp;</td></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#semantic-csv.core" name="semantic-csv.core"><h1 class="project-name">semantic-csv.core</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><h1>Higher level CSV parsing functionality</h1>
 
 <p>The two most popular CSV parsing libraries for Clojure presently - <code>clojure.data.csv</code> and <code>clojure-csv</code> -
 concern themselves only wtih the <em>syntax</em> of CSV;
@@ -2898,13 +2898,14 @@ opinionated defaults and an option map for overriding the default behaviour.</p>
 </td><td class="codes"></td></tr><tr><td class="docs"><h1>Core API namespace</h1>
 </td><td class="codes"><pre class="brush: clojure">(ns semantic-csv.core
   (:require [clojure.java.io :as io]
-            [clojure-csv :as csv]
+            [clojure-csv.core :as csv]
+            [semantic-csv.impl.core :as impl]
             [plumbing.core :as pc :refer [?&gt;&gt;]]))</pre></td></tr><tr><td class="docs"><p>To start, require this namespace, <code>clojure.java.io</code>, and your favorite CSV parser (e.g.,
 <a href="https://github.com/davidsantiago/clojure-csv">clojure-csv</a> or 
 <a href="https://github.com/clojure/data.csv">clojure/data.csv</a>; we'll be using the former).</p>
 
 <pre><code>(require '[semantic-csv.core :refer :all]
-         '[clojure-csv :as csv]
+         '[clojure-csv.core :as csv]
          '[clojure.java.io :as io])
 </code></pre>
 
@@ -2929,9 +2930,13 @@ However, in general, you'll want to use the following instead:</p>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Comsumes the first item as a header, and returns a seq of the remaining items as a maps with the header
   values as keys (see mappify-row).</p>
 </td><td class="codes"><pre class="brush: clojure">(defn mappify
-  [rows]
-  (let [header (first rows)]
-    (map (partial mappify-row header) (rest rows))))</pre></td></tr><tr><td class="docs"><p>Here's an example to whet our whistle:</p>
+  ([rows]
+   (mappify {} rows))
+  ([{:keys [keyify] :or {keyify true} :as opts}
+    rows]
+   (let [header (first rows)
+         header (if keyify (mapv keyword header) header)]
+     (map (partial mappify-row header) (rest rows)))))</pre></td></tr><tr><td class="docs"><p>Here's an example to whet our whistle:</p>
 
 <pre><code>=&gt; (with-open [in-file (io/reader "test/test.csv")]
      (-&gt;&gt;
@@ -2957,7 +2962,8 @@ We can solve this with the following function:</p>
      (fn [row]
        (let [x (first row)]
          (when x
-           (re-find comment-re x)))))))</pre></td></tr><tr><td class="docs"><p>Let's see this in action with the above code:</p>
+           (re-find comment-re x))))
+     rows)))</pre></td></tr><tr><td class="docs"><p>Let's see this in action with the above code:</p>
 
 <pre><code>=&gt; (with-open [in-file (io/reader "test/test.csv")]
      (-&gt;&gt;
@@ -3052,7 +3058,7 @@ So map or vector rows are fine, but lists or lazy sequences would not be.</p>
   (let [rest-options (dissoc opts :parser-opts)]
     (process
       rest-options
-      (impl/apply-kwargs csv/parse-csv csv-readable))))</pre></td></tr><tr><td class="docs"><pre><code>(with-open [in-file (io/reader "test/test.csv")]
+      (impl/apply-kwargs csv/parse-csv csv-readable parser-opts))))</pre></td></tr><tr><td class="docs"><pre><code>(with-open [in-file (io/reader "test/test.csv")]
   (doall
     (parse-and-process in-file
                        :cast-fns {:this #(Integer/parseInt %)})))
