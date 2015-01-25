@@ -1,5 +1,7 @@
 # cljsv
 
+[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/metasoarous/semantic-csv?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 A Clojure library with higher level functionality for CSV parsing.
 
 The key features offered over `clojure.data.csv` are:
