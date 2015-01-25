@@ -29,7 +29,7 @@
 (ns semantic-csv.core
   "# Core API namespace"
   (:require [clojure.java.io :as io]
-            [clojure.data.csv :as csv]
+            [clojure-csv :as csv]
             [plumbing.core :as pc :refer [?>>]]))
 
 
@@ -164,9 +164,9 @@
 ;; You're welcome.
 
 
-;; ## parse-csv
+;; ## process
 
-(defn parse
+(defn process
   "This function wraps together all of the various input processing capabilities into one, with options
   controlled by an opts hash with a heavy-handed/opinionated set of defaults:
 
@@ -190,13 +190,14 @@
         (?>> cast-fns (cast-cols cast-fns))))
   ; Use all defaults
   ([rows]
-   (parse {} rows)))
+   (process {} rows)))
 
 ;; Using this function, the code we've been building above is reduced to the following:
 ;;
 ;;     (with-open [in-file (io/reader "test/test.csv")]
 ;;       (doall
-;;         (parse (csv/parse-csv in-file))))
+;;         (process (csv/parse-csv in-file))))
+
 ;;
 
 
