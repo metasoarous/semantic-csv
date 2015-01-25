@@ -35,13 +35,22 @@
 ;; To start, require this namespace, as well as the namespace of your favorite CSV parser (e.g.,
 ;; [clojure-csv](https://github.com/davidsantiago/clojure-csv) or 
 ;; [clojure/data.csv](https://github.com/clojure/data.csv); we'll be using the former).
+;; We'll also need `clojure.javas.io`.
 ;; 
 ;;     (require '[semantic-csv.core :as sc]
-;;              '[clojure-csv :as csv])
+;;              '[clojure-csv :as csv]
+;;              '[clojure.java.io :as io])
 ;;
-;; Now let's take a tour through some of the processing functions we have available.
+;; Now let's take a tour through some of the processing functions we have available, starting with the reader
+;; functions.
+
+;; <br/>
 
 
+
+;; # Reader functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
 ;; ## mappify-row
 
 (defn mappify-row
@@ -63,10 +72,94 @@
   (let [header (first rows)]
     (map (partial mappify-row header) (rest rows))))
 
+;; Here's an example to whet our whistle:
+;;
+;;     => (with-open [in-file (io/reader "test/test.csv")]
+;;          (doall
+;;            (->>
+;;              (csv/parse-csv in-file)
+;;              mappify)))
+;;
+;;     ({:this "# some comment lines..."}
+;;      {:this "1", :that "2", :more "stuff"}
+;;      {:this "2", :that "3", :more "other yeah"})
+;;
+;; Note that "# some comment lines..." was really intended to be left out of the _data_ as a comment.
+;; We can solve this with the following function:
+
+;; ## remove-comments
+
+(defn remove-comments
+  "Removes rows which start with a comment character (by default, `#`). Operates by checking the regular 
+  expression against the first argument of every row in the collection."
+  ([rows]
+   (remove-comments #"^\#" rows))
+  ([comment-re rows]
+   (remove
+     (fn [row]
+       (let [x (first row)]
+         (when x
+           (re-find comment-re x)))))))
+
+;; Let's see this in action with the above code:
+;;
+;;     => (with-open [in-file (io/reader "test/test.csv")]
+;;          (doall
+;;            (->>
+;;              (csv/parse-csv in-file)
+;;              remove-comments
+;;              mappify)))
+;;
+;;     ({:this "1", :that "2", :more "stuff"}
+;;      {:this "2", :that "3", :more "other yeah"})
+;;
+;; Much better :-)
+;;
+;; [**Sidenote**: it feels awkward to me that this operates _after_ the initial parsing step has already taken
+;; place.
+;; However, it's not clear how you would do this safely;
+;; It seems you have to make assumptions about how  things are going into the parsing function, which I'd
+;; rather avoid.]
+
+
+;; ## cast-cols
+
+(defn cast-cols
+  "Casts the vals of each row according to `cast-fns`, which maps column-name -> casting-fn."
+  [cast-fns rows]
+  (map
+    (fn [row]
+      (reduce
+        (fn [row [col update-fn]]
+          (update-in row [col] update-fn))
+        row
+        cast-fns))
+    rows))
+
+;; Note that we have a couple of numeric columns in the play data we've been dealing with.
+;; Let's try casting them as such using `cast-cols`:
+;;
+;;     => (with-open [in-file (io/reader "test/test.csv")]
+;;          (doall
+;;            (->>
+;;              (csv/parse-csv in-file)
+;;              remove-comments
+;;              mappify
+;;              (cast-cols {:this #(Integer/parseInt %)}))))
+;;
+;;     ({:this 1, :that "2", :more "stuff"}
+;;      {:this 2, :that "3", :more "other yeah"})
+;;
+;; Lovely :-)
+;;
+;; Note from the implementation here that each row must be associative.
+;; So map or vector rows are fine, but lists or lazy sequences are not.
+
 
 (defn read-csv-rows
   "Given a `lines` collection, produces a seq of maps (`colname -> val`) where the column names are
   based on the first row's values.
+
   * `:header`: bool; consume the first row as a header?
   * `:comment-re`: specify a regular expression to use for commenting out lines, or something falsey
      if this isn't desired
@@ -115,7 +208,7 @@
 
 
 
-;; ## Some parsing functions for your convenience
+;; # Some parsing functions for your convenience
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; These functions can be imported and used in your `:cast-fns` specification
@@ -129,5 +222,10 @@
   "Translate into float"
   [string]
   (Float/parseFloat string))
+
+
+;; # Writer functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 

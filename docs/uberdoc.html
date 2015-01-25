@@ -2899,14 +2899,20 @@ impatient (see later).</p>
   (:require [clojure.java.io :as io]
             [clojure.data.csv :as csv]))</pre></td></tr><tr><td class="docs"><p>To start, require this namespace, as well as the namespace of your favorite CSV parser (e.g.,
 <a href="https://github.com/davidsantiago/clojure-csv">clojure-csv</a> or 
-<a href="https://github.com/clojure/data.csv">clojure/data.csv</a>; we'll be using the former).</p>
+<a href="https://github.com/clojure/data.csv">clojure/data.csv</a>; we'll be using the former).
+We'll also need <code>clojure.javas.io</code>.</p>
 
 <pre><code>(require '[semantic-csv.core :as sc]
-         '[clojure-csv :as csv])
+         '[clojure-csv :as csv]
+         '[clojure.java.io :as io])
 </code></pre>
 
-<p>Now let's take a tour through some of the processing functions we have available.</p>
-</td><td class="codes"></td></tr><tr><td class="docs"><h2>mappify-row</h2>
+<p>Now let's take a tour through some of the processing functions we have available, starting with the reader
+functions.</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><p><br/></p>
+</td><td class="codes"></td></tr><tr><td class="docs"><h1>Reader functions</h1>
+
+<h2>mappify-row</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Translates a single row of values into a map of <code>colname -&gt; val</code>, given colnames in <code>header</code>.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn mappify-row
   [header row]
@@ -2919,15 +2925,94 @@ However, in general, you'll want to use the following function:</p>
 </td><td class="codes"><pre class="brush: clojure">(defn mappify
   [rows]
   (let [header (first rows)]
-    (map (partial mappify-row header) (rest rows))))</pre></td></tr><tr><td class="docs"><p>Given a <code>lines</code> collection, produces a seq of maps (<code>colname -&gt; val</code>) where the column names are
-  based on the first row's values.
-  * <code>:header</code>: bool; consume the first row as a header?
-  * <code>:comment-re</code>: specify a regular expression to use for commenting out lines, or something falsey
-     if this isn't desired
-  * <code>:remove-empty</code>: also remove empty rows?
-  * <code>:cast-fns</code>: optional map of <code>colname | index -&gt; cast-fn</code>; row maps will have the values as output by the
-     assigned <code>cast-fn</code>.
-              <code>(cast-fns row-name)</code> to the string val</p>
+    (map (partial mappify-row header) (rest rows))))</pre></td></tr><tr><td class="docs"><p>Here's an example to whet our whistle:</p>
+
+<pre><code>=&gt; (with-open [in-file (io/reader "test/test.csv")]
+     (doall
+       (-&gt;&gt;
+         (csv/parse-csv in-file)
+         mappify)))
+
+({:this "# some comment lines..."}
+ {:this "1", :that "2", :more "stuff"}
+ {:this "2", :that "3", :more "other yeah"})
+</code></pre>
+
+<p>Note that "# some comment lines..." was really intended to be left out of the <em>data</em> as a comment.
+We can solve this with the following function:</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><h2>remove-comments</h2>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Removes rows which start with a comment character (by default, <code>#</code>). Operates by checking the regular 
+  expression against the first argument of every row in the collection.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn remove-comments
+  ([rows]
+   (remove-comments #&quot;^\#&quot; rows))
+  ([comment-re rows]
+   (remove
+     (fn [row]
+       (let [x (first row)]
+         (when x
+           (re-find comment-re x)))))))</pre></td></tr><tr><td class="docs"><p>Let's see this in action with the above code:</p>
+
+<pre><code>=&gt; (with-open [in-file (io/reader "test/test.csv")]
+     (doall
+       (-&gt;&gt;
+         (csv/parse-csv in-file)
+         remove-comments
+         mappify)))
+
+({:this "1", :that "2", :more "stuff"}
+ {:this "2", :that "3", :more "other yeah"})
+</code></pre>
+
+<p>Much better :-)</p>
+
+<p>[<strong>Sidenote</strong>: it feels awkward to me that this operates <em>after</em> the initial parsing step has already taken
+place.
+However, it's not clear how you would do this safely;
+It seems you have to make assumptions about how  things are going into the parsing function, which I'd
+rather avoid.]</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><h2>cast-cols</h2>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Casts the vals of each row according to <code>cast-fns</code>, which maps column-name -> casting-fn.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn cast-cols
+  [cast-fns rows]
+  (map
+    (fn [row]
+      (reduce
+        (fn [row [col update-fn]]
+          (update-in row [col] update-fn))
+        row
+        cast-fns))
+    rows))</pre></td></tr><tr><td class="docs"><p>Note that we have a couple of numeric columns in the play data we've been dealing with.
+Let's try casting them as such using <code>cast-cols</code>:</p>
+
+<pre><code>=&gt; (with-open [in-file (io/reader "test/test.csv")]
+     (doall
+       (-&gt;&gt;
+         (csv/parse-csv in-file)
+         remove-comments
+         mappify
+         (cast-cols {:this #(Integer/parseInt %)}))))
+
+({:this 1, :that "2", :more "stuff"}
+ {:this 2, :that "3", :more "other yeah"})
+</code></pre>
+
+<p>Lovely :-)</p>
+
+<p>Note from the implementation here that each row must be associative.
+So map or vector rows are fine, but lists or lazy sequences are not.</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Given a <code>lines</code> collection, produces a seq of maps (<code>colname -&gt; val</code>) where the column names are
+  based on the first row's values.</p>
+
+<ul>
+<li><code>:header</code>: bool; consume the first row as a header?</li>
+<li><code>:comment-re</code>: specify a regular expression to use for commenting out lines, or something falsey
+ if this isn't desired</li>
+<li><code>:remove-empty</code>: also remove empty rows?</li>
+<li><code>:cast-fns</code>: optional map of <code>colname | index -&gt; cast-fn</code>; row maps will have the values as output by the
+ assigned <code>cast-fn</code>.
+          <code>(cast-fns row-name)</code> to the string val</li>
+</ul>
 </td><td class="codes"><pre class="brush: clojure">(defn read-csv-rows
   [lines &amp; {:keys [comment-re header remove-empty cast-fns]
                  :or   {comment-re   #&quot;^\#&quot;
@@ -2960,7 +3045,7 @@ However, in general, you'll want to use the following function:</p>
     (impl/apply-kwargs read-csv-rows (line-seq file-or-filename) opts)))</pre></td></tr><tr><td class="docs"><p>Read csv in from a csv string. For details see the docstring for read-csv-rows</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-csv-str
   [csv-str &amp; opts]
-  (impl/apply-kwargs read-csv-rows (clojure.string/split-lines csv-str) opts))</pre></td></tr><tr><td class="docs"><h2>Some parsing functions for your convenience</h2>
+  (impl/apply-kwargs read-csv-rows (clojure.string/split-lines csv-str) opts))</pre></td></tr><tr><td class="docs"><h1>Some parsing functions for your convenience</h1>
 
 <p>These functions can be imported and used in your <code>:cast-fns</code> specification</p>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Translating string into integers</p>
@@ -2969,7 +3054,8 @@ However, in general, you'll want to use the following function:</p>
   (Integer/parseInt string))</pre></td></tr><tr><td class="docs"><p>Translate into float</p>
 </td><td class="codes"><pre class="brush: clojure">(defn -&gt;float
   [string]
-  (Float/parseFloat string))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#semantic-csv.impl.core" name="semantic-csv.impl.core"><h1 class="project-name">semantic-csv.impl.core</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>This namespace consists of implementation details for the main API</p>
+  (Float/parseFloat string))</pre></td></tr><tr><td class="docs"><h1>Writer functions</h1>
+</td><td class="codes"></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#semantic-csv.impl.core" name="semantic-csv.impl.core"><h1 class="project-name">semantic-csv.impl.core</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>This namespace consists of implementation details for the main API</p>
 </td><td class="codes"><pre class="brush: clojure">(ns semantic-csv.impl.core)</pre></td></tr><tr><td class="docs"><p>Utility that takes a function f, any number of regular args, and a final kw-args argument which will be
   splatted in as a final argument</p>
 </td><td class="codes"><pre class="brush: clojure">(defn apply-kwargs
