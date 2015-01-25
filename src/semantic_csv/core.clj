@@ -41,9 +41,16 @@
 ;;              '[clojure-csv :as csv]
 ;;              '[clojure.java.io :as io])
 ;;
-;; Now let's take a tour through some of the processing functions we have available.
+;; Now let's take a tour through some of the processing functions we have available, starting with the reader
+;; functions.
+
+;; <br/>
 
 
+
+;; # Reader functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
 ;; ## mappify-row
 
 (defn mappify-row
@@ -76,6 +83,45 @@
 ;;     ({:this "# some comment lines..."}
 ;;      {:this "1", :that "2", :more "stuff"}
 ;;      {:this "2", :that "3", :more "other yeah"})
+;;
+;; Note that "# some comment lines..." was really intended to be left out of the _data_ as a comment.
+;; We can solve this with the following function:
+
+;; ## remove-comments
+
+(defn remove-comments
+  "Removes rows which start with a comment character (by default, `#`). Operates by checking the regular 
+  expression against the first argument of every row in the collection."
+  ([rows]
+   (remove-comments #"^\#" rows))
+  ([comment-re rows]
+   (remove
+     (fn [row]
+       (let [x (first row)]
+         (when x
+           (re-find comment-re x)))))))
+
+;; Let's see this in action with the above code:
+;;
+;;     => (with-open [in-file (io/reader "test/test.csv")]
+;;          (doall
+;;            (->>
+;;              (csv/parse-csv in-file)
+;;              remove-comments
+;;              mappify)))
+;;
+;;     ({:this "1", :that "2", :more "stuff"}
+;;      {:this "2", :that "3", :more "other yeah"})
+;;
+;; Much better :-)
+;;
+;; [**Sidenote**: it feels awkward to me that this operates _after_ the initial parsing step has already taken
+;; place.
+;; However, it's not clear how you would do this safely;
+;; It seems you have to make assumptions about how  things are going into the parsing function, which I'd
+;; rather avoid.]
+
+
 
 (defn read-csv-rows
   "Given a `lines` collection, produces a seq of maps (`colname -> val`) where the column names are
@@ -129,7 +175,7 @@
 
 
 
-;; ## Some parsing functions for your convenience
+;; # Some parsing functions for your convenience
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; These functions can be imported and used in your `:cast-fns` specification
@@ -143,5 +189,10 @@
   "Translate into float"
   [string]
   (Float/parseFloat string))
+
+
+;; # Writer functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 
