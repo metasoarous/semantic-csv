@@ -2884,10 +2884,29 @@ Semantic CSV takes it the next step by giving you tools for addressing the <em>s
 <li>Remove lines starting with comment characters (by default <code>#</code>)</li>
 <li>An optional "sniffer" that reads in N lines, and uses them to guess column types (SOON)</li>
 </ul>
+
+<h2>Structure</h2>
+
+<p>Semantic CSV consists of a number of functions which perform separate processing steps towards your final
+destination.
+This is in the spirit of making the API as composable and interoperable as possible.
+However, we also offer a magick sauce "do everything for me without making me think" function for the
+impatient (see later).</p>
+
+<p><br/></p>
 </td><td class="codes"></td></tr><tr><td class="docs"><h1>Core API namespace</h1>
 </td><td class="codes"><pre class="brush: clojure">(ns semantic-csv.core
   (:require [clojure.java.io :as io]
-            [clojure.data.csv :as csv]))</pre></td></tr><tr><td class="docs"><p>Translates a single row of values into a map of <code>colname -&gt; val</code>, given colnames in <code>header</code>.
+            [clojure.data.csv :as csv]))</pre></td></tr><tr><td class="docs"><p>To start, require this namespace, as well as the namespace of your favorite CSV parser (see
+additional processing on top of the output of a more stipped down CSV parser (for example,
+<code>[clojure-csv](https://github.com/davidsantiago/clojure-csv)</code> or 
+<code>[clojure-csv](https://github.com/clojure/data.csv)</code>; we'll be using the former).</p>
+
+<p>```(require '[semantic-csv.core :as sc]
+            '[clojure-csv :as csv])```</p>
+
+<p>Now let's take a tour through some of the processing functions we have available.</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Translates a single row of values into a map of <code>colname -&gt; val</code>, given colnames in <code>header</code>.
   The cast-fn arg should be a vector of translation functions the same length as header and row,
   and will be used to translate the raw string vals in row.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-csv-row

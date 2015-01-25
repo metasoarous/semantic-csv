@@ -14,12 +14,33 @@
 ;; * When writing, apply formatting functions on a column by column basis via `:format-fns`, when `str` won't cut it
 ;; * Remove lines starting with comment characters (by default `#`)
 ;; * An optional "sniffer" that reads in N lines, and uses them to guess column types (SOON)
+;;
+;; ## Structure
+;;
+;; Semantic CSV consists of a number of functions which perform separate processing steps towards your final
+;; destination.
+;; This is in the spirit of making the API as composable and interoperable as possible.
+;; However, we also offer a magick sauce "do everything for me without making me think" function for the
+;; impatient (see later).
+;;
+;; <br/>
 
 
 (ns semantic-csv.core
   "# Core API namespace"
   (:require [clojure.java.io :as io]
             [clojure.data.csv :as csv]))
+
+
+;; To start, require this namespace, as well as the namespace of your favorite CSV parser (see
+;; additional processing on top of the output of a more stipped down CSV parser (for example,
+;; `[clojure-csv](https://github.com/davidsantiago/clojure-csv)` or 
+;; `[clojure-csv](https://github.com/clojure/data.csv)`; we'll be using the former).
+;; 
+;; ```(require '[semantic-csv.core :as sc]
+;;             '[clojure-csv :as csv])```
+;;
+;; Now let's take a tour through some of the processing functions we have available.
 
 
 (defn read-csv-row
