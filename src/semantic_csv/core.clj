@@ -111,7 +111,8 @@
      (fn [row]
        (let [x (first row)]
          (when x
-           (re-find comment-re x)))))))
+           (re-find comment-re x))))
+     rows)))
 
 ;; Let's see this in action with the above code:
 ;;
@@ -215,7 +216,7 @@
   (let [rest-options (dissoc opts :parser-opts)]
     (process
       rest-options
-      (impl/apply-kwargs csv/parse-csv csv-readable))))
+      (impl/apply-kwargs csv/parse-csv csv-readable parser-opts))))
 
 ;;     (with-open [in-file (io/reader "test/test.csv")]
 ;;       (doall
@@ -267,4 +268,5 @@
 
 
 ;; # TODO
+
 
