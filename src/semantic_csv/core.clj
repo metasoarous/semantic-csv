@@ -29,7 +29,8 @@
 (ns semantic-csv.core
   "# Core API namespace"
   (:require [clojure.java.io :as io]
-            [clojure.data.csv :as csv]))
+            [clojure.data.csv :as csv]
+            [plumbing.core :as pc :refer [?>>]]))
 
 
 ;; To start, require this namespace, as well as the namespace of your favorite CSV parser (e.g.,
@@ -156,38 +157,47 @@
 ;; So map or vector rows are fine, but lists or lazy sequences are not.
 
 
-(defn read-csv-rows
-  "Given a `lines` collection, produces a seq of maps (`colname -> val`) where the column names are
-  based on the first row's values.
+;; ## A note on these processing functions...
+;;
+;; Note that all of these processing functions leave the rows collection as the final argument.
+;; This is to facilitate the use of threading macros in your CSV processing.
+;; You're welcome.
+
+
+;; ## parse-csv
+
+(defn parse
+  "This function wraps together all of the various input processing capabilities into one, with options
+  controlled by an opts hash with a heavy-handed/opinionated set of defaults:
 
   * `:header`: bool; consume the first row as a header?
   * `:comment-re`: specify a regular expression to use for commenting out lines, or something falsey
-     if this isn't desired
-  * `:remove-empty`: also remove empty rows?
+     if filtering out comment lines is not desired.
+  * `:remove-empty`: also remove empty rows? Defaults to true.
   * `:cast-fns`: optional map of `colname | index -> cast-fn`; row maps will have the values as output by the
      assigned `cast-fn`.
               `(cast-fns row-name)` to the string val"
-  [lines & {:keys [comment-re header remove-empty cast-fns]
-                 :or   {comment-re   #"^\#"
-                        header       true
-                        remove-empty true
-                        cast-fns     {}}
-                 :as opts}]
-  (let [non-cmnt-lines (remove #(or (when comment-re
-                                      (re-find comment-re %))
-                                    (when remove-empty
-                                      (re-find #"^\s*$" %)))
-                               lines)
-        header (first (csv/read-csv (first non-cmnt-lines)))
-        non-cmnt-lines (rest non-cmnt-lines)]
-    (map
-      (comp
-        (partial read-csv-row
-                 header 
-                 (map #(or (cast-fns %) identity) header))
-        first
-        csv/read-csv)
-      non-cmnt-lines)))
+  ([{:keys [comment-re header remove-empty cast-fns]
+                  :or   {comment-re   #"^\#"
+                         header       true
+                         remove-empty true
+                         cast-fns     {}}
+                  :as opts}
+    rows]
+   (->> rows
+        (?>> comment-re (remove-comments comment-re))
+        (?>> header (mappify))
+        (?>> cast-fns (cast-cols cast-fns))))
+  ; Use all defaults
+  ([rows]
+   (parse {} rows)))
+
+;; Using this function, the code we've been building above is reduced to the following:
+;;
+;;     (with-open [in-file (io/reader "test/test.csv")]
+;;       (doall
+;;         (parse (csv/parse-csv in-file))))
+;;
 
 
 (defn read-csv-file
