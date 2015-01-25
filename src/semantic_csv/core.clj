@@ -1,32 +1,29 @@
-; ## Higher level CSV parsing functionality
-;
-; The most popular CSV parsing libraries for Clojure presently -- `clojure.data.csv` and `clojure-csv` -- are really focused on handling the _syntax_ of CSV;
-; They take CSV text and transform it into collections of row vectors of string values, providing a minimal translation into the world of data.
-; Semantic CSV takes it the next step by giving you tools for addressing the _semantics_ of your data, helping you put it into the form that better reflects what it means, and what's most useful for you.
-;
-; ## Features
-; 
-; To be less abstract about it, `semantic-csv` lets you easily:
-; 
-; * Absorb header row as a vector of column names, and return remaining rows as maps of `column-name -> row-val`
-; * Write from a collection of maps, given a pre-specified `:header`
-; * When reading, apply casting functions on a column by column basis (for casting to ints, floats, etc) via `:cast-fns`
-; * When writing, apply formatting functions on a column by column basis via `:format-fns`, when `str` won't cut it
-; * Remove lines starting with comment characters (by default `#`)
-; * An optional "sniffer" that reads in N lines, and uses them to guess column types (SOON)
-;
-; ## This namespace...
-;
-; ...is the core of the API.
+;; # Higher level CSV parsing functionality
+;;
+;; The most popular CSV parsing libraries for Clojure presently -- `clojure.data.csv` and `clojure-csv` -- are really focused on handling the _syntax_ of CSV;
+;; They take CSV text and transform it into collections of row vectors of string values, providing a minimal translation into the world of data.
+;; Semantic CSV takes it the next step by giving you tools for addressing the _semantics_ of your data, helping you put it into the form that better reflects what it means, and what's most useful for you.
+;;
+;; ## Features
+;; 
+;; To be less abstract about it, `semantic-csv` lets you easily:
+;; 
+;; * Absorb header row as a vector of column names, and return remaining rows as maps of `column-name -> row-val`
+;; * Write from a collection of maps, given a pre-specified `:header`
+;; * When reading, apply casting functions on a column by column basis (for casting to ints, floats, etc) via `:cast-fns`
+;; * When writing, apply formatting functions on a column by column basis via `:format-fns`, when `str` won't cut it
+;; * Remove lines starting with comment characters (by default `#`)
+;; * An optional "sniffer" that reads in N lines, and uses them to guess column types (SOON)
 
 
 (ns semantic-csv.core
+  "# Core API namespace"
   (:require [clojure.java.io :as io]
             [clojure.data.csv :as csv]))
 
 
 (defn read-csv-row
-  "Translates a single row of values into a map of `colname -> val`, given colnames in header.
+  "Translates a single row of values into a map of `colname -> val`, given colnames in `header`.
   The cast-fn arg should be a vector of translation functions the same length as header and row,
   and will be used to translate the raw string vals in row."
   [header cast-fns row]
@@ -78,6 +75,7 @@
   (if (string? file-or-filename)
     (with-open [f (io/reader file-or-filename)]
       (doall
+        ;; Trying out internal doc
         (impl/apply-kwargs read-csv-file f opts)))
     (impl/apply-kwargs read-csv-rows (line-seq file-or-filename) opts)))
 
@@ -91,8 +89,8 @@
 
 ;; ## Some parsing functions for your convenience
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-; These functions can be imported and used in your `:cast-fns` specification
+;;
+;; These functions can be imported and used in your `:cast-fns` specification
 
 (defn ->int
   "Translating string into integers"

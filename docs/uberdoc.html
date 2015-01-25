@@ -2866,14 +2866,28 @@ net.brehaut.ClojureTools = (function (SH) {
   };
 })(SyntaxHighlighter);
 </script><title>semantic-csv -- Marginalia</title></head><body><table><tr><td class="docs"><div class="header"><h1 class="project-name"><a href="http://github.com/metasoarous/semantic-csv">semantic-csv</a></h1><h2 class="project-version">0.1.0-SNAPSHOT</h2><br /><p>A Clojure library with higher level CSV parsing functionality</p>
-</div><div class="dependencies"><h3>dependencies</h3><table><tr><td class="dep-name">org.clojure/clojure</td><td class="dotted"><hr /></td><td class="dep-version">1.5.1</td></tr><tr><td class="dep-name">org.clojure/tools.trace</td><td class="dotted"><hr /></td><td class="dep-version">0.7.8</td></tr><tr><td class="dep-name">org.clojure/data.csv</td><td class="dotted"><hr /></td><td class="dep-version">0.1.2</td></tr></table></div></td><td class="codes" style="text-align: center; vertical-align: middle;color: #666;padding-right:20px"><br /><br /><br />(this space intentionally left almost blank)</td></tr><tr><td class="docs"><div class="toc"><a name="toc"><h3>namespaces</h3></a><ul><li><a href="#semantic-csv.core">semantic-csv.core</a></li></ul></div></td><td class="codes">&nbsp;</td></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#semantic-csv.core" name="semantic-csv.core"><h1 class="project-name">semantic-csv.core</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
+</div><div class="dependencies"><h3>dependencies</h3><table><tr><td class="dep-name">org.clojure/clojure</td><td class="dotted"><hr /></td><td class="dep-version">1.5.1</td></tr><tr><td class="dep-name">org.clojure/tools.trace</td><td class="dotted"><hr /></td><td class="dep-version">0.7.8</td></tr><tr><td class="dep-name">org.clojure/data.csv</td><td class="dotted"><hr /></td><td class="dep-version">0.1.2</td></tr></table></div></td><td class="codes" style="text-align: center; vertical-align: middle;color: #666;padding-right:20px"><br /><br /><br />(this space intentionally left almost blank)</td></tr><tr><td class="docs"><div class="toc"><a name="toc"><h3>namespaces</h3></a><ul><li><a href="#semantic-csv.core">semantic-csv.core</a></li><li><a href="#semantic-csv.impl.core">semantic-csv.impl.core</a></li></ul></div></td><td class="codes">&nbsp;</td></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#semantic-csv.core" name="semantic-csv.core"><h1 class="project-name">semantic-csv.core</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><h1>Higher level CSV parsing functionality</h1>
+
+<p>The most popular CSV parsing libraries for Clojure presently -- <code>clojure.data.csv</code> and <code>clojure-csv</code> -- are really focused on handling the <em>syntax</em> of CSV;
+They take CSV text and transform it into collections of row vectors of string values, providing a minimal translation into the world of data.
+Semantic CSV takes it the next step by giving you tools for addressing the <em>semantics</em> of your data, helping you put it into the form that better reflects what it means, and what's most useful for you.</p>
+
+<h2>Features</h2>
+
+<p>To be less abstract about it, <code>semantic-csv</code> lets you easily:</p>
+
+<ul>
+<li>Absorb header row as a vector of column names, and return remaining rows as maps of <code>column-name -&gt; row-val</code></li>
+<li>Write from a collection of maps, given a pre-specified <code>:header</code></li>
+<li>When reading, apply casting functions on a column by column basis (for casting to ints, floats, etc) via <code>:cast-fns</code></li>
+<li>When writing, apply formatting functions on a column by column basis via <code>:format-fns</code>, when <code>str</code> won't cut it</li>
+<li>Remove lines starting with comment characters (by default <code>#</code>)</li>
+<li>An optional "sniffer" that reads in N lines, and uses them to guess column types (SOON)</li>
+</ul>
+</td><td class="codes"></td></tr><tr><td class="docs"><h1>Core API namespace</h1>
 </td><td class="codes"><pre class="brush: clojure">(ns semantic-csv.core
   (:require [clojure.java.io :as io]
-            [clojure.data.csv :as csv]))</pre></td></tr><tr><td class="docs"><p>Takes a function f, any number of regular args, and a final kw-args argument which will be
-  splatted in as a final argument</p>
-</td><td class="codes"><pre class="brush: clojure">(defn- apply-kwargs
-  [f &amp; args]
-  (apply (apply partial f (butlast args)) (apply concat (last args))))</pre></td></tr><tr><td class="docs"><p>Translates a single row of values into a map of colname -> val, given colnames in header.
+            [clojure.data.csv :as csv]))</pre></td></tr><tr><td class="docs"><p>Translates a single row of values into a map of <code>colname -&gt; val</code>, given colnames in <code>header</code>.
   The cast-fn arg should be a vector of translation functions the same length as header and row,
   and will be used to translate the raw string vals in row.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-csv-row
@@ -2884,22 +2898,17 @@ net.brehaut.ClojureTools = (function (SH) {
       (fn [rowname cast-fn v] [rowname (cast-fn v)])
       header
       cast-fns
-      row)))</pre></td></tr><tr><td class="docs"><p>Convenience function for translating strings into integers</p>
-</td><td class="codes"><pre class="brush: clojure">(defn -&gt;int
-  [string]
-  (Integer/parseInt string))</pre></td></tr><tr><td class="docs"><p>Convenience function for translating strings into floats</p>
-</td><td class="codes"><pre class="brush: clojure">(defn -&gt;float
-  [string]
-  (Float/parseFloat string))</pre></td></tr><tr><td class="docs"><p>Given a lines-iter, produces a sequence of hash-maps of col -> val mappings, as specified by
-  a header in file (if specified; indices ow). Options
-    header: bool; consume the first row as a header?
-    comment-re: specify a regular expression to use for commenting out lines, or something falsey
-                if this isn't desired
-    remove-empty: also remove empty rows?
-    cast-fns: optionally cast the vals in the map by applying the corresponding function in
-              (cast-fns row-name) to the string val</p>
+      row)))</pre></td></tr><tr><td class="docs"><p>Given a <code>lines</code> collection, produces a seq of maps (<code>colname -&gt; val</code>) where the column names are
+  based on the first row's values.
+  * <code>:header</code>: bool; consume the first row as a header?
+  * <code>:comment-re</code>: specify a regular expression to use for commenting out lines, or something falsey
+     if this isn't desired
+  * <code>:remove-empty</code>: also remove empty rows?
+  * <code>:cast-fns</code>: optional map of <code>colname | index -&gt; cast-fn</code>; row maps will have the values as output by the
+     assigned <code>cast-fn</code>.
+              <code>(cast-fns row-name)</code> to the string val</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-csv-rows
-  [lines-iter &amp; {:keys [comment-re header remove-empty cast-fns]
+  [lines &amp; {:keys [comment-re header remove-empty cast-fns]
                  :or   {comment-re   #&quot;^\#&quot;
                         header       true
                         remove-empty true
@@ -2909,7 +2918,7 @@ net.brehaut.ClojureTools = (function (SH) {
                                       (re-find comment-re %))
                                     (when remove-empty
                                       (re-find #&quot;^\s*$&quot; %)))
-                               lines-iter)
+                               lines)
         header (first (csv/read-csv (first non-cmnt-lines)))
         non-cmnt-lines (rest non-cmnt-lines)]
     (map
@@ -2919,18 +2928,32 @@ net.brehaut.ClojureTools = (function (SH) {
                  (map #(or (cast-fns %) identity) header))
         first
         csv/read-csv)
-      non-cmnt-lines)))</pre></td></tr><tr><td class="docs">
+      non-cmnt-lines)))</pre></td></tr><tr><td class="docs"><p>Read csv in from a filename or file handle. For details see the docstring for read-csv-rows</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-csv-file
   [file-or-filename &amp; opts]
-  &quot;Read csv in from a filename or file handle. For details see the docstring for read-csv-rows&quot;
   (if (string? file-or-filename)
     (with-open [f (io/reader file-or-filename)]
       (doall
-        (apply-kwargs read-csv-file f opts)))
-    (apply-kwargs read-csv-rows (line-seq file-or-filename) opts)))</pre></td></tr><tr><td class="docs"><p>Read csv in from a csv string. For details see the docstring for read-csv-rows</p>
+        ;; Trying out internal doc
+        (impl/apply-kwargs read-csv-file f opts)))
+    (impl/apply-kwargs read-csv-rows (line-seq file-or-filename) opts)))</pre></td></tr><tr><td class="docs"><p>Read csv in from a csv string. For details see the docstring for read-csv-rows</p>
 </td><td class="codes"><pre class="brush: clojure">(defn read-csv-str
   [csv-str &amp; opts]
-  (apply-kwargs read-csv-rows (clojure.string/split-lines csv-str) opts))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a><div id="floating-toc"><ul><li class="floating-toc-li" id="floating-toc_semantic-csv.core">semantic-csv.core</li></ul></div></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+  (impl/apply-kwargs read-csv-rows (clojure.string/split-lines csv-str) opts))</pre></td></tr><tr><td class="docs"><h2>Some parsing functions for your convenience</h2>
+
+<p>These functions can be imported and used in your <code>:cast-fns</code> specification</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Translating string into integers</p>
+</td><td class="codes"><pre class="brush: clojure">(defn -&gt;int
+  [string]
+  (Integer/parseInt string))</pre></td></tr><tr><td class="docs"><p>Translate into float</p>
+</td><td class="codes"><pre class="brush: clojure">(defn -&gt;float
+  [string]
+  (Float/parseFloat string))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#semantic-csv.impl.core" name="semantic-csv.impl.core"><h1 class="project-name">semantic-csv.impl.core</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>This namespace consists of implementation details for the main API</p>
+</td><td class="codes"><pre class="brush: clojure">(ns semantic-csv.impl.core)</pre></td></tr><tr><td class="docs"><p>Utility that takes a function f, any number of regular args, and a final kw-args argument which will be
+  splatted in as a final argument</p>
+</td><td class="codes"><pre class="brush: clojure">(defn apply-kwargs
+  [f &amp; args]
+  (apply (apply partial f (butlast args)) (apply concat (last args))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a><div id="floating-toc"><ul><li class="floating-toc-li" id="floating-toc_semantic-csv.core">semantic-csv.core</li><li class="floating-toc-li" id="floating-toc_semantic-csv.impl.core">semantic-csv.impl.core</li></ul></div></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack
