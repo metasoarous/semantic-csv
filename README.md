@@ -4,20 +4,25 @@
 
 A Clojure library with higher level CSV parsing functionality.
 
-The most popular CSV parsing libraries for Clojure presently -- `clojure.data.csv` and `clojure-csv` -- are really focused on handling the _syntax_ of CSV;
-They take CSV text and transform it into collections of row vectors of string values, providing a minimal translation into the world of data.
-Semantic CSV takes it the next step by giving you tools for addressing the _semantics_ of your data, helping you put it into the form that better reflects what it means, and what's most useful for you.
+The two most popular CSV parsing libraries for Clojure presently - `clojure.data.csv` and `clojure-csv` - concern themselves only wtih the _syntax_ of CSV;
+They take CSV text, transform it into a collection of vectors of string values, and nothing more.
+Semantic CSV takes the next step by giving you tools for addressing the _semantics_ of your data, helping you put it into the form that better reflects what it means, and what's most useful for you.
 
 ## Features
 
-To be less abstract about it, `semantic-csv` lets you easily:
-
 * Absorb header row as a vector of column names, and return remaining rows as maps of `column-name -> row-val`
-* Write from a collection of maps, given a pre-specified `:header`
-* When reading, apply casting functions on a column by column basis (for casting to ints, floats, etc) via `:cast-fns`
-* When writing, apply formatting functions on a column by column basis via `:format-fns`, when `str` won't cut it
+* Write from a collection of maps, given a header
+* When reading, apply casting functions by column name
+* When writing, apply formatting functions by column name
 * Remove lines starting with comment characters (by default `#`)
-* An optional "sniffer" that reads in N lines, and uses them to guess column types (SOON)
+* Fully compatible with any CSV parsing library that retruning/writing a sequence of row vectors
+* (SOON) A "sniffer" that reads in N lines, and uses them to guess column types
+
+## Structure
+
+This is in the spirit of making the API as composable and interoperable as possible.
+However, as a convenience, we offer a few functions which wrap these individual steps with a set of opinionated defaults and an option map for overriding the default behaviour.
+
 
 ## Installation
 
@@ -34,28 +39,26 @@ Then run `lein git-deps` and you should be good to go.
 
 Please see [metasoarous.github.io/semantic-csv](http://metasoarous.github.io/semantic-csv) for complete documentation.
 
-**Note: This will be evolving rapidly! In particular, I'll be decomposing the API into individual functions which give you each of the features separately, but probably still offer a function that does all the magic for you.**
-
-The _emphasized_ usage of `semantic-csv` involves using individual processing functions on the output of a grammatical csv parser such as `clojure.data.csv` or `clojure-csv`.
-This reflects a nice decoupling of grammar and semantics.
+Semantic CSV _emphasizes_ a number of individual processing functions which can operate on the output of a syntactic csv parser such as `clojure.data.csv` or `clojure-csv`.
+This reflects a nice decoupling of grammar and semantics, making this library as composable and interoperable as possible.
 
 ```clojure
 => (require '[clojure.java.io :as io]
             '[clojure-csv :as csv]
             '[semantic-csv :as sc])
 => (with-open [in-file (io/reader "test/test.csv")]
-     (doall
-       (->>
-         (csv/parse-csv in-file)
-         sc/remove-comments
-         sc/mappify
-         (sc/cast-cols {:this sc/->int}))))
+     (->>
+       (csv/parse-csv in-file)
+       sc/remove-comments
+       sc/mappify
+       (sc/cast-cols {:this sc/->int})
+       doall)))
 
 ({:this 1, :that "2", :more "stuff"}
  {:this 2, :that "3", :more "other yeah"})
 ```
 
-However, while this nice decoupled API is emphasized, we provide some opinionated, but configurable convenience functions for automating some of this.
+However, some opinionated, but configurable convenience functions are also provided.
 
 ```clojure
 (with-open [in-file (io/reader "test/test.csv")]

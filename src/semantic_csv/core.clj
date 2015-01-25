@@ -1,27 +1,28 @@
 ;; # Higher level CSV parsing functionality
 ;;
-;; The most popular CSV parsing libraries for Clojure presently -- `clojure.data.csv` and `clojure-csv` -- are really focused on handling the _syntax_ of CSV;
-;; They take CSV text and transform it into collections of row vectors of string values, providing a minimal translation into the world of data.
-;; Semantic CSV takes it the next step by giving you tools for addressing the _semantics_ of your data, helping you put it into the form that better reflects what it means, and what's most useful for you.
+;; The two most popular CSV parsing libraries for Clojure presently - `clojure.data.csv` and `clojure-csv` -
+;; concern themselves only wtih the _syntax_ of CSV;
+;; They take CSV text, transform it into a collection of vectors of string values, and nothing more.
+;; Semantic CSV takes the next step by giving you tools for addressing the _semantics_ of your data, helping you put it into the form that better reflects what it means, and what's most useful for you.
 ;;
 ;; ## Features
-;; 
-;; To be less abstract about it, `semantic-csv` lets you easily:
-;; 
+;;
 ;; * Absorb header row as a vector of column names, and return remaining rows as maps of `column-name -> row-val`
-;; * Write from a collection of maps, given a pre-specified `:header`
-;; * When reading, apply casting functions on a column by column basis (for casting to ints, floats, etc) via `:cast-fns`
-;; * When writing, apply formatting functions on a column by column basis via `:format-fns`, when `str` won't cut it
+;; * Write from a collection of maps, given a header
+;; * When reading, apply casting functions by column name
+;; * When writing, apply formatting functions by column name
 ;; * Remove lines starting with comment characters (by default `#`)
-;; * A "sniffer" that reads in N lines, and uses them to guess column types (SOON)
+;; * Fully compatible with any CSV parsing library that retruning/writing a sequence of row vectors
+;; * (SOON) A "sniffer" that reads in N lines, and uses them to guess column types
 ;;
 ;; ## Structure
 ;;
-;; Semantic CSV consists of a number of functions which perform separate processing steps towards your final
-;; destination.
-;; This is in the spirit of making the API as composable and interoperable as possible.
-;; However, we also offer a magick sauce "do everything for me without making me think" function for the
-;; impatient (see later).
+;; Semantic CSV _emphasizes_ a number of individual processing functions which can operate on the output of a
+;; syntactic csv parser such as `clojure.data.csv` or `clojure-csv`.
+;; This reflects a nice decoupling of grammar and semantics, in an effort to make this library as composable
+;; and interoperable as possible.
+;; However, as a convenience, we offer a few functions which wrap these individual steps with a set of
+;; opinionated defaults and an option map for overriding the default behaviour.
 ;;
 ;; <br/>
 
@@ -33,25 +34,29 @@
             [plumbing.core :as pc :refer [?>>]]))
 
 
-;; To start, require this namespace, as well as the namespace of your favorite CSV parser (e.g.,
+;; To start, require this namespace, `clojure.java.io`, and your favorite CSV parser (e.g.,
 ;; [clojure-csv](https://github.com/davidsantiago/clojure-csv) or 
 ;; [clojure/data.csv](https://github.com/clojure/data.csv); we'll be using the former).
-;; We'll also need `clojure.javas.io`.
 ;; 
-;;     (require '[semantic-csv.core :as sc]
+;;     (require '[semantic-csv.core :refer :all]
 ;;              '[clojure-csv :as csv]
 ;;              '[clojure.java.io :as io])
 ;;
 ;; Now let's take a tour through some of the processing functions we have available, starting with the reader
 ;; functions.
-
+;;
 ;; <br/>
-
 
 
 ;; # Reader functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
+;; Note that all of these processing functions leave the rows collection as the final argument.
+;; This is to make these functions interoperable with other standard collection processing functions (`map`,
+;; `filter`, `take`, etc.) in the context of the `->>` threading macro.
+;; You're welcome.
+
+
 ;; ## mappify-row
 
 (defn mappify-row
@@ -61,10 +66,10 @@
 
 ;; We leave this in the main API as a courtesy in case you'd like to map lines over this function in your own
 ;; fashion.
-;; However, in general, you'll want to use the following function:
+;; However, in general, you'll want to use the following instead:
 
 
-;; ## mappify-csv-rows
+;; ## mappify
 
 (defn mappify
   "Comsumes the first item as a header, and returns a seq of the remaining items as a maps with the header
@@ -76,10 +81,10 @@
 ;; Here's an example to whet our whistle:
 ;;
 ;;     => (with-open [in-file (io/reader "test/test.csv")]
-;;          (doall
-;;            (->>
-;;              (csv/parse-csv in-file)
-;;              mappify)))
+;;          (->>
+;;            (csv/parse-csv in-file)
+;;            mappify
+;;            doall))
 ;;
 ;;     ({:this "# some comment lines..."}
 ;;      {:this "1", :that "2", :more "stuff"}
@@ -87,6 +92,7 @@
 ;;
 ;; Note that "# some comment lines..." was really intended to be left out of the _data_ as a comment.
 ;; We can solve this with the following function:
+
 
 ;; ## remove-comments
 
@@ -105,11 +111,11 @@
 ;; Let's see this in action with the above code:
 ;;
 ;;     => (with-open [in-file (io/reader "test/test.csv")]
-;;          (doall
-;;            (->>
-;;              (csv/parse-csv in-file)
-;;              remove-comments
-;;              mappify)))
+;;          (->>
+;;            (csv/parse-csv in-file)
+;;            remove-comments
+;;            mappify
+;;            doall))
 ;;
 ;;     ({:this "1", :that "2", :more "stuff"}
 ;;      {:this "2", :that "3", :more "other yeah"})
@@ -119,14 +125,14 @@
 ;; [**Sidenote**: it feels awkward to me that this operates _after_ the initial parsing step has already taken
 ;; place.
 ;; However, it's not clear how you would do this safely;
-;; It seems you have to make assumptions about how  things are going into the parsing function, which I'd
+;; It seems you have to make assumptions about how things are going into the parsing function, which I'd
 ;; rather avoid.]
 
 
 ;; ## cast-cols
 
 (defn cast-cols
-  "Casts the vals of each row according to `cast-fns`, which maps column-name -> casting-fn."
+  "Casts the vals of each row according to `cast-fns`, which maps `column-name -> casting-fn`."
   [cast-fns rows]
   (map
     (fn [row]
@@ -141,27 +147,20 @@
 ;; Let's try casting them as such using `cast-cols`:
 ;;
 ;;     => (with-open [in-file (io/reader "test/test.csv")]
-;;          (doall
-;;            (->>
-;;              (csv/parse-csv in-file)
-;;              remove-comments
-;;              mappify
-;;              (cast-cols {:this #(Integer/parseInt %)}))))
+;;          (->>
+;;            (csv/parse-csv in-file)
+;;            remove-comments
+;;            mappify
+;;            (cast-cols {:this #(Integer/parseInt %)})
+;;            doall))
 ;;
 ;;     ({:this 1, :that "2", :more "stuff"}
 ;;      {:this 2, :that "3", :more "other yeah"})
 ;;
 ;; Lovely :-)
 ;;
-;; Note from the implementation here that each row must be associative.
-;; So map or vector rows are fine, but lists or lazy sequences are not.
-
-
-;; ## A note on these processing functions...
-;;
-;; Note that all of these processing functions leave the rows collection as the final argument.
-;; This is to facilitate the use of threading macros in your CSV processing.
-;; You're welcome.
+;; Note from the implementation here that each row need only be associative.
+;; So map or vector rows are fine, but lists or lazy sequences would not be.
 
 
 ;; ## process
@@ -196,14 +195,15 @@
 ;;
 ;;     (with-open [in-file (io/reader "test/test.csv")]
 ;;       (doall
-;;         (process (csv/parse-csv in-file))))
+;;         (process (csv/parse-csv in-file)
+;;                  :cast-fns {:this #(Integer/parseInt %)})))
 
 ;; ## parse-and-process
 
 (defn parse-and-process
-  "This is a convenience function for reading a csv file using `clojure/data.csv` and passing it through process
-  with the given set of options (specified _last_ as kw_args). Note that `:parser-opts` can be specified and
-  will be passed along to `clojure-csv/parse-csv`"
+  "This is a convenience function for reading a csv file using `clojure/data.csv` and passing it through `process`
+  with the given set of options (specified _last_ as kw_args, in contrast with our other processing functions).
+  Note that `:parser-opts` can be specified and will be passed along to `clojure-csv/parse-csv`"
   [csv-readable & {:keys [parser-opts]
                    :or   {parser-opts {}}
                    :as   opts}]
@@ -212,36 +212,27 @@
       rest-options
       (impl/apply-kwargs csv/parse-csv csv-readable))))
 
-;; Now we can cut out an extra set of parentheses...
-;;
 ;;     (with-open [in-file (io/reader "test/test.csv")]
 ;;       (doall
-;;         (parse-and-process in-file)))
+;;         (parse-and-process in-file
+;;                            :cast-fns {:this #(Integer/parseInt %)})))
 
 
 ;; ## slurp-and-process
 
 (defn slurp-and-process
-  "This convenience function let's you `parse-and-process` csv data given a csv filename."
+  "This convenience function let's you `parse-and-process` csv data given a csv filename. Note that it is _not_
+  lazy, and must read in all data so the file handle cna be closed."
   [csv-filename & {:as opts}]
   (let [rest-options (dissoc opts :parser-opts)]
     (with-open [in-file (io/reader csv-filename)]
       (doall
         (impl/apply-kwargs parse-and-process in-file opts)))))
 
-;; And now, for the ultimate in _programmer_ laziness at the sacrifice of _program_ laziness:
+;; For the ultimate in _programmer_ laziness:
 ;;
-;;     (slurp-and-process "test/test.csv")
-
-;; <br/>
-
-
-;; ## Caveat Emptor...
-;;
-;; But before you go, we encourage you to use the less heavy handed of these methods.
-;; Magick can be nice sometimes, but is best when used in moderation.
-;; And Clojure is all about composability and modularity, so consider this libraries emphasis to be on the
-;; individual, single goal processing functions.
+;;     (slurp-and-process "test/test.csv"
+;;                        :cast-fns {:this #(Integer/parseInt %)})
 
 
 ;; <br/>
@@ -261,6 +252,9 @@
   "Translate into float"
   [string]
   (Float/parseFloat string))
+
+;;     (slurp-and-process "test/test.csv"
+;;                        :cast-fns {:this ->int})
 
 
 ;; # Writer functions
