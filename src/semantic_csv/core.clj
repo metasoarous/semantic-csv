@@ -369,6 +369,24 @@
      (format-with formatters data))))
 
 
+;; ## batch
+
+(defn batch
+  "Takes sequence of items and returns a sequence of batches of items from the original
+  sequence, at most `n` long."
+  [n data]
+  (partition n n [] data))
+
+;; This function can be useful when working with `clojure-csv` when writing lazily.
+;; The `clojure-csv.core/write-csv` function does not actually write to a file, but just formats the data you
+;; pass in as a CSV string.
+;; If you're working with a lot of data, calling this function would build a single massive string of the
+;; results, and likely crash.
+;; To write _lazily_, you have to take some number of rows, write them, and repeat till you're done.
+;; Our `batch` function helps by giving you a lazy sequence of batches of `n` rows at a time, letting you pass
+;; _that_ through to something that writes off the chunks lazily.
+
+
 ;; # One last example showing everything together
 ;;
 ;; Let's see how Semantic CSV in the context of a little data pipeline.
