@@ -385,7 +385,8 @@
 ;;         ;; Do some of your own processing...
 ;;         (map
 ;;           (fn [row]
-;;             (assoc row :jazz (* (:this row) (:that row)))))
+;;             (assoc row :jazz (* (:this row)
+;;                                 (:that row)))))
 ;;         vectorify
 ;;         ; clojure-csv doesn't like non string values
 ;;         (format-all-with str)
