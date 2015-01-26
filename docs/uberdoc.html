@@ -3099,7 +3099,7 @@ do this composing for you, while the emphasis of the library remains with the co
 
 <p>One of the first things we'll need is a function that takes a sequence of maps and turns it into a sequence
 of vectors given column name order:</p>
-</td><td class="codes"></td></tr><tr><td class="docs"><h2>vectorify</h2>
+</td><td class="codes"></td></tr><tr><td class="docs"><h2>vectorize</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Take a sequence of maps, and transform them into a sequence of vectors. Options:</p>
 
 <ul>
@@ -3113,9 +3113,9 @@ the result prepended to the output sequence. The default behaviour is to leave s
 keyword names such that the <code>:</code> is removed from their string representation. Passing a falsey value will
 leave the header unaltered in the output.</li>
 </ul>
-</td><td class="codes"><pre class="brush: clojure">(defn vectorify
+</td><td class="codes"><pre class="brush: clojure">(defn vectorize
   ([data]
-   (vectorify {} data))
+   (vectorize {} data))
   ([{:keys [header prepend-header format-header]
      :or {prepend-header true format-header impl/stringify-keyword}}
     data]
@@ -3131,7 +3131,7 @@ leave the header unaltered in the output.</li>
 
 <pre><code>=&gt; (let [data [{:this "a" :that "b"}
                {:this "x" :that "y"}]]
-     (vectorify data))
+     (vectorize data))
 (["this" "that"]
  ["a" "b"]
  ["x" "y"])
@@ -3141,7 +3141,7 @@ leave the header unaltered in the output.</li>
 
 <pre><code>=&gt; (let [data [{:this "a" :that "b"}
                {:this "x" :that "y"}]]
-     (vectorify {:header [:that :this]
+     (vectorize {:header [:that :this]
                  :preprend-header false}
                 data))
 (["b" "a"]
@@ -3150,7 +3150,7 @@ leave the header unaltered in the output.</li>
 </td><td class="codes"></td></tr><tr><td class="docs"><h2>format-with</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Formats the values in <code>data</code> entries. First argument is a map of <code>colname -&gt; format-fn</code> to be applied to
   entries for the given column name. Optional second argument is an options hash, with which you can specify
-  an option for <code>:ignore-first</code>, useful for when you've already applied <code>vectorify</code> and don't want to run the
+  an option for <code>:ignore-first</code>, useful for when you've already applied <code>vectorize</code> and don't want to run the
   format functions on the header row.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn format-with
   ([formatters data]
@@ -3166,7 +3166,7 @@ useful when you have a header row you want to ignore.</p>
 <pre><code>=&gt; (let [data [{:this "a" :that "b"}
                {:this "x" :that "y"}]]
      (-&gt;&gt; data
-          vectorify
+          vectorize
           (format-with {:this (partial str "val-")}
                        {:ignore-first true})))
 (["this" "that"]
@@ -3181,29 +3181,105 @@ useful when you have a header row you want to ignore.</p>
    (map (partial impl/format-row-with formatter) data))
   ([formatter keys data]
    (let [formatters (into {} (map vector keys formatter))]
-     (format-with formatters data))))</pre></td></tr><tr><td class="docs"><h1>One last example showing everything together</h1>
+     (format-with formatters data))))</pre></td></tr><tr><td class="docs"><h2>batch</h2>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Takes sequence of items and returns a sequence of batches of items from the original
+  sequence, at most <code>n</code> long.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn batch
+  [n data]
+  (partition n n [] data))</pre></td></tr><tr><td class="docs"><p>This function can be useful when working with <code>clojure-csv</code> when writing lazily.
+The <code>clojure-csv.core/write-csv</code> function does not actually write to a file, but just formats the data you
+pass in as a CSV string.
+If you're working with a lot of data, calling this function would build a single massive string of the
+results, and likely crash.
+To write <em>lazily</em>, you have to take some number of rows, write them, and repeat till you're done.
+Our <code>batch</code> function helps by giving you a lazy sequence of batches of <code>n</code> rows at a time, letting you pass
+<em>that</em> through to something that writes off the chunks lazily.</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><h2>spit-csv</h2>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Convenience function for spitting out CSV data to a file using <code>clojure-csv</code>.</p>
+
+<ul>
+<li><code>file</code> - Can be either a filename string, or a file handle.</li>
+<li><code>opts</code> - Optional hash of settings.</li>
+<li><p><code>data</code> - Can be a sequence of either dictionaries or vectors; if the former, vectorize will be
+  called on the input with <code>:headers</code> argument specifiable through <code>opts</code>.</p>
+
+<p>The Options hash can have the following mappings:</p></li>
+<li><p><code>:batch-size</code> - How many rows to format and write at a time?</p></li>
+<li><code>:formatters</code> - Formatters to be run on data. Will call <code>str</code> on all automatically reguardless.</li>
+<li><code>:writer-opts</code> - Options hash to be passed along to <code>clojure-csv.core/write-csv</code>.</li>
+<li><code>:headers</code> - Headers to be passed along to <code>vectorize</code>, if necessary.</li>
+<li><code>:prepend-header</code> - Should the header be prepended to the data written if <code>vectorize</code> is called?</li>
+</ul>
+</td><td class="codes"><pre class="brush: clojure">(defn spit-csv
+  ([file data]
+   (spit-csv file {} data))
+  ([file
+    {:keys [batch-size formatters writer-opts headers]
+     :or   {batch-size 20 :prepend-header true}
+     :as   opts}
+    data]
+   (if (string? file)
+     (with-open [file-handle (io/writer file)]
+       (spit-csv file-handle opts data))
+     ; Else assume we already have a file handle
+     (-&gt;&gt; data
+          (?&gt;&gt; (-&gt; data first map?)
+               (vectorize {:header headers
+                           :prepend-header prepend-header}))
+          (?&gt;&gt; formatters (format-with formatters))
+          ; For save measure
+          (format-all-with str)
+          (batch batch-size)
+          (pc/&lt;- (csv/write-csv writer-opts))
+          (reduce
+            (fn [w row]
+              (.write w)
+              w)
+            file)))))</pre></td></tr><tr><td class="docs"><p>Like <code>slurp-and-process</code>, this is a convenience function which wraps together a set of opinionated options,
+ultimately writing out all data to the specified file handle or filename.
+Note that since we use <code>clojure-csv</code> here, we offer a <code>:batch</code> option that lets you format and write small
+batches of rows out at a time, to avoid contructing a massive string representation of all the data in the
+case of bigger data sets.</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><h1>One last example showing everything together</h1>
 
 <p>Let's see how Semantic CSV in the context of a little data pipeline.
-We're going to thread data in, tranform into maps to make things easier to work with, modify the data based
-on some computations, and then write the modified data out to a file, all maintaining laziness.</p>
+We're going to thread data in, tranform into maps, run some computations for each row and assoc in,
+then write the modified data out to a file, all lazily.
+First let's show this with <code>clojure/data.csv</code>, which I find a little easier to use for writing.</p>
+
+<pre><code>(require '[clojure.data.csv :as cd-csv])
+
+(with-open [in-file (io/reader "test/test.csv")
+            out-file (io/writer "test-out.csv")]
+  (-&gt;&gt;
+    (cd-csv/read-csv in-file)
+    remove-comments
+    mappify
+    (cast-with {:this -&gt;int :that -&gt;float})
+    ;; Do your processing...
+    (map
+      (fn [row]
+        (assoc row :jazz (* (:this row)
+                            (:that row)))))
+    vectorize
+    (cd-csv/write-csv out-file)))
+</code></pre>
+
+<p>Now let's see what this looks like with <code>clojure-csv</code>.
+Note that as mentioned above, <code>clojure-csv</code> doesn't actually handle file writing for you, just formatting
+into a CSV string.
+So, to maintain lazyness, you'll have to add a couple steps to the end.
+Additionally, it doesn't accept row items with anything that isn't a string, in contrast with
+<code>clojure/data.csv</code> which casts to a string for you, so we'll have to account for that as well.</p>
 
 <pre><code>(with-open [in-file (io/reader "test/test.csv")
             out-file (io/writer "test-out.csv")]
   (-&gt;&gt;
     (csv/parse-csv in-file)
-    remove-comments
-    mappify
-    (cast-with {:this -&gt;int :that -&gt;float})
-    ;; Do some of your own processing...
-    (map
-      (fn [row]
-        (assoc row :jazz (* (:this row)
-                            (:that row)))))
-    vectorify
-    ; clojure-csv doesn't like non string values
+    ...
     (format-all-with str)
-    ; Convert into row strings
-    (map (comp csv/write-csv vector))
+    (batch 1)
+    (map csv/write-csv)
     (reduce
       (fn [w row]
         (.write w row)
