@@ -1,0 +1,12 @@
+
+body table tbody tr td.docs {
+  width: 50%;
+}
+
+body table tbody tr td.docs code {
+  font-size: 12px;
+}
+
+body table tbody tr td.docs pre code {
+  overflow-x: auto;
+}
