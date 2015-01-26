@@ -327,3 +327,33 @@
 ;;      ["y" "x"])
 
 
+;; ## format-with
+
+(defn format-with
+  "Formats the values in `data` entries. First argument is a map of `colname -> format-fn` to be applied to
+  entries for the given column name. Optional second argument is an options hash, with which you can specify
+  an option for `:ignore-first`, useful for when you've already applied `vectorify` and don't want to run the
+  format functions on the header row."
+  ([formatters data]
+   (format-with formatters {} data))
+  ([formatters {:keys [ignore-first] :as opts} data]
+   (->> data
+        (?>> ignore-first (drop 1))
+        ;; A little silly, this actually just uses cast-with
+        (cast-with formatters data)
+        (?>> ignore-first (cons (first data))))))
+
+;; Note that this is actually just the `cast-with` function with an option for `:ignore-first`, potentially
+;; useful when you have a header row you want to ignore.
+;;
+;;     => (let [data [{:this "a" :that "b"}
+;;                    {:this "x" :that "y"}]]
+;;          (->> data
+;;               vectorify
+;;               (format-with {:this (partial str "val-")}
+;;                            {:ignore-first true})))
+;;     (["this" "that"]
+;;      ["val-a" "b"]
+;;      ["val-x" "y"])
+
+
