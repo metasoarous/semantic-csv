@@ -2983,9 +2983,9 @@ place.
 However, it's not clear how you would do this safely;
 It seems you have to make assumptions about how things are going into the parsing function, which I'd
 rather avoid.]</p>
-</td><td class="codes"></td></tr><tr><td class="docs"><h2>cast-cols</h2>
+</td><td class="codes"></td></tr><tr><td class="docs"><h2>cast-with</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Casts the vals of each row according to <code>cast-fns</code>, which maps <code>column-name -&gt; casting-fn</code>.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn cast-cols
+</td><td class="codes"><pre class="brush: clojure">(defn cast-with
   [cast-fns rows]
   (map
     (fn [row]
@@ -2995,14 +2995,14 @@ rather avoid.]</p>
         row
         cast-fns))
     rows))</pre></td></tr><tr><td class="docs"><p>Note that we have a couple of numeric columns in the play data we've been dealing with.
-Let's try casting them as such using <code>cast-cols</code>:</p>
+Let's try casting them as such using <code>cast-with</code>:</p>
 
 <pre><code>=&gt; (with-open [in-file (io/reader "test/test.csv")]
      (-&gt;&gt;
        (csv/parse-csv in-file)
        remove-comments
        mappify
-       (cast-cols {:this #(Integer/parseInt %)})
+       (cast-with {:this #(Integer/parseInt %)})
        doall))
 
 ({:this 1, :that "2", :more "stuff"}
@@ -3037,7 +3037,7 @@ So map or vector rows are fine, but lists or lazy sequences would not be.</p>
    (-&gt;&gt; rows
         (?&gt;&gt; comment-re (remove-comments comment-re))
         (?&gt;&gt; header (mappify))
-        (?&gt;&gt; cast-fns (cast-cols cast-fns))))
+        (?&gt;&gt; cast-fns (cast-with cast-fns))))
   ; Use all defaults
   ([rows]
    (process {} rows)))</pre></td></tr><tr><td class="docs"><p>Using this function, the code we've been building above is reduced to the following:</p>
@@ -3090,7 +3090,132 @@ So map or vector rows are fine, but lists or lazy sequences would not be.</p>
                    :cast-fns {:this -&gt;int})
 </code></pre>
 </td><td class="codes"></td></tr><tr><td class="docs"><h1>Writer functions</h1>
-</td><td class="codes"></td></tr><tr><td class="docs"><h1>TODO</h1>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>As with the input processing functions, the output processing functions are designed to be small, modular
+peices you compose as you see fit.
+Using these it's expected that you push your data through the processing functions and into a third party
+writer.
+But also as with the readers, we offer some higher level, default-opinionated, configurable functions that
+do this composing for you, while the emphasis of the library remains with the composable functions.</p>
+
+<p>One of the first things we'll need is a function that takes a sequence of maps and turns it into a sequence
+of vectors given column name order:</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><h2>vectorify</h2>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Take a sequence of maps, and transform them into a sequence of vectors. Options:</p>
+
+<ul>
+<li><code>:header</code> - The header to be used. If not specified, this defaults to <code>(-&gt; data first keys)</code>. Only
+values corresponding to the specified header will be included in the output, and will be included in the
+order corresponding to this argument.</li>
+<li><code>:prepend-header</code> - Defaults to true, and controls whether the <code>:header</code> vector should be prepended
+to the output sequence.</li>
+<li><code>:format-header</code> - If specified, this function will be called on each element of the <code>:header</code> vector, and
+the result prepended to the output sequence. The default behaviour is to leave strings alone but stringify
+keyword names such that the <code>:</code> is removed from their string representation. Passing a falsey value will
+leave the header unaltered in the output.</li>
+</ul>
+</td><td class="codes"><pre class="brush: clojure">(defn vectorify
+  ([data]
+   (vectorify {} data))
+  ([{:keys [header prepend-header format-header]
+     :or {prepend-header true format-header impl/stringify-keyword}}
+    data]
+   ;; Grab the specified header, or the keys from the first data item. We'll
+   ;; use these to `get` the appropriate values for each row.
+   (let [header     (or header (-&gt; data first keys))
+         ;; This will be the formatted version we prepend if desired
+         out-header (if format-header (mapv format-header header) header)]
+     (-&gt;&gt; data
+          (map
+            (fn [row] (mapv (partial get row) header)))
+          (?&gt;&gt; prepend-header (cons out-header))))))</pre></td></tr><tr><td class="docs"><p>Let's see this in action:</p>
+
+<pre><code>=&gt; (let [data [{:this "a" :that "b"}
+               {:this "x" :that "y"}]]
+     (vectorify data))
+(["this" "that"]
+ ["a" "b"]
+ ["x" "y"])
+</code></pre>
+
+<p>With some options:</p>
+
+<pre><code>=&gt; (let [data [{:this "a" :that "b"}
+               {:this "x" :that "y"}]]
+     (vectorify {:header [:that :this]
+                 :preprend-header false}
+                data))
+(["b" "a"]
+ ["y" "x"])
+</code></pre>
+</td><td class="codes"></td></tr><tr><td class="docs"><h2>format-with</h2>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Formats the values in <code>data</code> entries. First argument is a map of <code>colname -&gt; format-fn</code> to be applied to
+  entries for the given column name. Optional second argument is an options hash, with which you can specify
+  an option for <code>:ignore-first</code>, useful for when you've already applied <code>vectorify</code> and don't want to run the
+  format functions on the header row.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn format-with
+  ([formatters data]
+   (format-with formatters {} data))
+  ([formatters {:keys [ignore-first] :as opts} data]
+   (-&gt;&gt; data
+        (?&gt;&gt; ignore-first (drop 1))
+        ;; A little silly, this actually just uses cast-with
+        (cast-with formatters data)
+        (?&gt;&gt; ignore-first (cons (first data))))))</pre></td></tr><tr><td class="docs"><p>Note that this is actually just the <code>cast-with</code> function with an option for <code>:ignore-first</code>, potentially
+useful when you have a header row you want to ignore.</p>
+
+<pre><code>=&gt; (let [data [{:this "a" :that "b"}
+               {:this "x" :that "y"}]]
+     (-&gt;&gt; data
+          vectorify
+          (format-with {:this (partial str "val-")}
+                       {:ignore-first true})))
+(["this" "that"]
+ ["val-a" "b"]
+ ["val-x" "y"])
+</code></pre>
+</td><td class="codes"></td></tr><tr><td class="docs"><h2>format-all-with</h2>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Formats all row values with a single function. Alternatively, a second arg will restrict the row values on
+  which the function will be called.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn format-all-with
+  ([formatter data]
+   (map (partial impl/format-row-with formatter) data))
+  ([formatter keys data]
+   (let [formatters (into {} (map vector keys formatter))]
+     (format-with formatters data))))</pre></td></tr><tr><td class="docs"><h1>One last example showing everything together</h1>
+
+<p>Let's see how Semantic CSV in the context of a little data pipeline.
+We're going to thread data in, tranform into maps to make things easier to work with, modify the data based
+on some computations, and then write the modified data out to a file, all maintaining laziness.</p>
+
+<pre><code>(with-open [in-file (io/reader "test/test.csv")
+            out-file (io/writer "test-out.csv")]
+  (-&gt;&gt;
+    (csv/parse-csv in-file)
+    remove-comments
+    mappify
+    (cast-with {:this -&gt;int :that -&gt;float})
+    ;; Do some of your own processing...
+    (map
+      (fn [row]
+        (assoc row :jazz (* (:this row) (:that row)))))
+    vectorify
+    ; clojure-csv doesn't like non string values
+    (format-all-with str)
+    ; Convert into row strings
+    (map (comp csv/write-csv vector))
+    (reduce
+      (fn [w row]
+        (.write w row)
+        w)
+      out-file)))
+</code></pre>
+
+<p><br/></p>
+</td><td class="codes"></td></tr><tr><td class="docs"><h1>That's it for the core API</h1>
+
+<p>Hope you find this library useful.
+If you have questions or comments please either <a href="https://github.com/metasoarous/semantic-csv/issues">submit an issue</a>
+or join us in the <a href="https://gitter.im/metasoarous/semantic-csv">dedicated chat room</a>.</p>
 </td><td class="codes"></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#semantic-csv.impl.core" name="semantic-csv.impl.core"><h1 class="project-name">semantic-csv.impl.core</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>This namespace consists of implementation details for the main API</p>
 </td><td class="codes"><pre class="brush: clojure">(ns semantic-csv.impl.core)</pre></td></tr><tr><td class="docs"><p>Utility that takes a function f, any number of regular args, and a final kw-args argument which will be
   splatted in as a final argument</p>
@@ -3100,7 +3225,22 @@ So map or vector rows are fine, but lists or lazy sequences would not be.</p>
     (apply partial
            f
            (butlast args))
-    (apply concat (last args))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a><div id="floating-toc"><ul><li class="floating-toc-li" id="floating-toc_semantic-csv.core">semantic-csv.core</li><li class="floating-toc-li" id="floating-toc_semantic-csv.impl.core">semantic-csv.impl.core</li></ul></div></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+    (apply concat (last args))))</pre></td></tr><tr><td class="docs"><p>Leaves strings alone. Turns keywords into the stringified version of the keyword, sans the initial <code>:</code>
+  character. On anything else, calls str.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn stringify-keyword
+  [x]
+  (cond
+    (string? x)   x
+    (keyword? x)  (-&gt;&gt; x str (drop 1) (apply str))
+    :else         (str x)))</pre></td></tr><tr><td class="docs"><p>Format the values of row with the given function. This gives us some flexbility with respect to formatting
+  both vectors and maps in similar fashion.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn format-row-with
+  [formatter row]
+  (cond
+    (map? row)
+      (into {}
+        (map (fn [[k v]] [k (formatter v)]) row))
+    :else (mapv formatter row)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a><div id="floating-toc"><ul><li class="floating-toc-li" id="floating-toc_semantic-csv.core">semantic-csv.core</li><li class="floating-toc-li" id="floating-toc_semantic-csv.impl.core">semantic-csv.impl.core</li></ul></div></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

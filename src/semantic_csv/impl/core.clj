@@ -13,3 +13,24 @@
     (apply concat (last args))))
 
 
+(defn stringify-keyword
+  "Leaves strings alone. Turns keywords into the stringified version of the keyword, sans the initial `:`
+  character. On anything else, calls str."
+  [x]
+  (cond
+    (string? x)   x
+    (keyword? x)  (->> x str (drop 1) (apply str))
+    :else         (str x)))
+
+
+(defn format-row-with
+  "Format the values of row with the given function. This gives us some flexbility with respect to formatting
+  both vectors and maps in similar fashion."
+  [formatter row]
+  (cond
+    (map? row)
+      (into {}
+        (map (fn [[k v]] [k (formatter v)]) row))
+    :else (mapv formatter row)))
+
+

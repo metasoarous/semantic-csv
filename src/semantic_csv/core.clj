@@ -135,9 +135,9 @@
 ;; rather avoid.]
 
 
-;; ## cast-cols
+;; ## cast-with
 
-(defn cast-cols
+(defn cast-with
   "Casts the vals of each row according to `cast-fns`, which maps `column-name -> casting-fn`."
   [cast-fns rows]
   (map
@@ -150,14 +150,14 @@
     rows))
 
 ;; Note that we have a couple of numeric columns in the play data we've been dealing with.
-;; Let's try casting them as such using `cast-cols`:
+;; Let's try casting them as such using `cast-with`:
 ;;
 ;;     => (with-open [in-file (io/reader "test/test.csv")]
 ;;          (->>
 ;;            (csv/parse-csv in-file)
 ;;            remove-comments
 ;;            mappify
-;;            (cast-cols {:this #(Integer/parseInt %)})
+;;            (cast-with {:this #(Integer/parseInt %)})
 ;;            doall))
 ;;
 ;;     ({:this 1, :that "2", :more "stuff"}
@@ -192,7 +192,7 @@
    (->> rows
         (?>> comment-re (remove-comments comment-re))
         (?>> header (mappify))
-        (?>> cast-fns (cast-cols cast-fns))))
+        (?>> cast-fns (cast-with cast-fns))))
   ; Use all defaults
   ([rows]
    (process {} rows)))
@@ -267,6 +267,143 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-;; # TODO
+;; As with the input processing functions, the output processing functions are designed to be small, modular
+;; peices you compose as you see fit.
+;; Using these it's expected that you push your data through the processing functions and into a third party
+;; writer.
+;; But also as with the readers, we offer some higher level, default-opinionated, configurable functions that
+;; do this composing for you, while the emphasis of the library remains with the composable functions.
+;;
+;; One of the first things we'll need is a function that takes a sequence of maps and turns it into a sequence
+;; of vectors given column name order:
+
+;; ## vectorify
+
+(defn vectorify
+  "Take a sequence of maps, and transform them into a sequence of vectors. Options:
+
+  * `:header` - The header to be used. If not specified, this defaults to `(-> data first keys)`. Only
+    values corresponding to the specified header will be included in the output, and will be included in the
+    order corresponding to this argument.
+  * `:prepend-header` - Defaults to true, and controls whether the `:header` vector should be prepended
+    to the output sequence.
+  * `:format-header` - If specified, this function will be called on each element of the `:header` vector, and
+    the result prepended to the output sequence. The default behaviour is to leave strings alone but stringify
+    keyword names such that the `:` is removed from their string representation. Passing a falsey value will
+    leave the header unaltered in the output."
+  ([data]
+   (vectorify {} data))
+  ([{:keys [header prepend-header format-header]
+     :or {prepend-header true format-header impl/stringify-keyword}}
+    data]
+   ;; Grab the specified header, or the keys from the first data item. We'll
+   ;; use these to `get` the appropriate values for each row.
+   (let [header     (or header (-> data first keys))
+         ;; This will be the formatted version we prepend if desired
+         out-header (if format-header (mapv format-header header) header)]
+     (->> data
+          (map
+            (fn [row] (mapv (partial get row) header)))
+          (?>> prepend-header (cons out-header))))))
+
+
+;; Let's see this in action:
+;;
+;;     => (let [data [{:this "a" :that "b"}
+;;                    {:this "x" :that "y"}]]
+;;          (vectorify data))
+;;     (["this" "that"]
+;;      ["a" "b"]
+;;      ["x" "y"])
+;;
+;; With some options:
+;;
+;;     => (let [data [{:this "a" :that "b"}
+;;                    {:this "x" :that "y"}]]
+;;          (vectorify {:header [:that :this]
+;;                      :preprend-header false}
+;;                     data))
+;;     (["b" "a"]
+;;      ["y" "x"])
+
+
+;; ## format-with
+
+(defn format-with
+  "Formats the values in `data` entries. First argument is a map of `colname -> format-fn` to be applied to
+  entries for the given column name. Optional second argument is an options hash, with which you can specify
+  an option for `:ignore-first`, useful for when you've already applied `vectorify` and don't want to run the
+  format functions on the header row."
+  ([formatters data]
+   (format-with formatters {} data))
+  ([formatters {:keys [ignore-first] :as opts} data]
+   (->> data
+        (?>> ignore-first (drop 1))
+        ;; A little silly, this actually just uses cast-with
+        (cast-with formatters data)
+        (?>> ignore-first (cons (first data))))))
+
+;; Note that this is actually just the `cast-with` function with an option for `:ignore-first`, potentially
+;; useful when you have a header row you want to ignore.
+;;
+;;     => (let [data [{:this "a" :that "b"}
+;;                    {:this "x" :that "y"}]]
+;;          (->> data
+;;               vectorify
+;;               (format-with {:this (partial str "val-")}
+;;                            {:ignore-first true})))
+;;     (["this" "that"]
+;;      ["val-a" "b"]
+;;      ["val-x" "y"])
+
+
+;; ## format-all-with
+
+(defn format-all-with
+  "Formats all row values with a single function. Alternatively, a second arg will restrict the row values on
+  which the function will be called."
+  ([formatter data]
+   (map (partial impl/format-row-with formatter) data))
+  ([formatter keys data]
+   (let [formatters (into {} (map vector keys formatter))]
+     (format-with formatters data))))
+
+
+;; # One last example showing everything together
+;;
+;; Let's see how Semantic CSV in the context of a little data pipeline.
+;; We're going to thread data in, tranform into maps to make things easier to work with, modify the data based
+;; on some computations, and then write the modified data out to a file, all maintaining laziness.
+;;
+;;     (with-open [in-file (io/reader "test/test.csv")
+;;                 out-file (io/writer "test-out.csv")]
+;;       (->>
+;;         (csv/parse-csv in-file)
+;;         remove-comments
+;;         mappify
+;;         (cast-with {:this ->int :that ->float})
+;;         ;; Do some of your own processing...
+;;         (map
+;;           (fn [row]
+;;             (assoc row :jazz (* (:this row) (:that row)))))
+;;         vectorify
+;;         ; clojure-csv doesn't like non string values
+;;         (format-all-with str)
+;;         ; Convert into row strings
+;;         (map (comp csv/write-csv vector))
+;;         (reduce
+;;           (fn [w row]
+;;             (.write w row)
+;;             w)
+;;           out-file)))
+;;
+;; <br/>
+
+
+;; # That's it for the core API
+;;
+;; Hope you find this library useful.
+;; If you have questions or comments please either [submit an issue](https://github.com/metasoarous/semantic-csv/issues)
+;; or join us in the [dedicated chat room](https://gitter.im/metasoarous/semantic-csv).
 
 

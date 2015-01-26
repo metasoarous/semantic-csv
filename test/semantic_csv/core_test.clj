@@ -21,14 +21,14 @@
     (testing "should work with mappify"
       (is (= (->> data
                   mappify
-                  (cast-cols {:this ->int})
+                  (cast-with {:this ->int})
                   first)
              {:this 1 :that "y"}))))
   (let [data [["1" "this"]
               ["2" "that"]]]
     (testing "should work without mappify"
       (is (= (->> data
-                  (cast-cols {0 ->int})
+                  (cast-with {0 ->int})
                   second)
              [2 "that"])))))
 
