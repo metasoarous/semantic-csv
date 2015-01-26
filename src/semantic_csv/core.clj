@@ -277,9 +277,9 @@
 ;; One of the first things we'll need is a function that takes a sequence of maps and turns it into a sequence
 ;; of vectors given column name order:
 
-;; ## vectorify
+;; ## vectorize
 
-(defn vectorify
+(defn vectorize
   "Take a sequence of maps, and transform them into a sequence of vectors. Options:
 
   * `:header` - The header to be used. If not specified, this defaults to `(-> data first keys)`. Only
@@ -292,7 +292,7 @@
     keyword names such that the `:` is removed from their string representation. Passing a falsey value will
     leave the header unaltered in the output."
   ([data]
-   (vectorify {} data))
+   (vectorize {} data))
   ([{:keys [header prepend-header format-header]
      :or {prepend-header true format-header impl/stringify-keyword}}
     data]
@@ -311,7 +311,7 @@
 ;;
 ;;     => (let [data [{:this "a" :that "b"}
 ;;                    {:this "x" :that "y"}]]
-;;          (vectorify data))
+;;          (vectorize data))
 ;;     (["this" "that"]
 ;;      ["a" "b"]
 ;;      ["x" "y"])
@@ -320,7 +320,7 @@
 ;;
 ;;     => (let [data [{:this "a" :that "b"}
 ;;                    {:this "x" :that "y"}]]
-;;          (vectorify {:header [:that :this]
+;;          (vectorize {:header [:that :this]
 ;;                      :preprend-header false}
 ;;                     data))
 ;;     (["b" "a"]
@@ -332,7 +332,7 @@
 (defn format-with
   "Formats the values in `data` entries. First argument is a map of `colname -> format-fn` to be applied to
   entries for the given column name. Optional second argument is an options hash, with which you can specify
-  an option for `:ignore-first`, useful for when you've already applied `vectorify` and don't want to run the
+  an option for `:ignore-first`, useful for when you've already applied `vectorize` and don't want to run the
   format functions on the header row."
   ([formatters data]
    (format-with formatters {} data))
@@ -349,7 +349,7 @@
 ;;     => (let [data [{:this "a" :that "b"}
 ;;                    {:this "x" :that "y"}]]
 ;;          (->> data
-;;               vectorify
+;;               vectorize
 ;;               (format-with {:this (partial str "val-")}
 ;;                            {:ignore-first true})))
 ;;     (["this" "that"]
@@ -387,7 +387,7 @@
 ;;           (fn [row]
 ;;             (assoc row :jazz (* (:this row)
 ;;                                 (:that row)))))
-;;         vectorify
+;;         vectorize
 ;;         ; clojure-csv doesn't like non string values
 ;;         (format-all-with str)
 ;;         ; Convert into row strings
