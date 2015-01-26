@@ -387,6 +387,56 @@
 ;; _that_ through to something that writes off the chunks lazily.
 
 
+;; ## spit-csv
+
+(defn spit-csv
+  "Convenience function for spitting out CSV data to a file using `clojure-csv`.
+
+  * `file` - Can be either a filename string, or a file handle.
+  * `opts` - Optional hash of settings.
+  * `data` - Can be a sequence of either dictionaries or vectors; if the former, vectorize will be
+      called on the input with `:headers` argument specifiable through `opts`.
+
+  The Options hash can have the following mappings:
+
+  * `:batch-size` - How many rows to format and write at a time?
+  * `:formatters` - Formatters to be run on data. Will call `str` on all automatically reguardless.
+  * `:writer-opts` - Options hash to be passed along to `clojure-csv.core/write-csv`.
+  * `:headers` - Headers to be passed along to `vectorize`, if necessary.
+  * `:prepend-header` - Should the header be prepended to the data written if `vectorize` is called?"
+  ([file data]
+   (spit-csv file {} data))
+  ([file
+    {:keys [batch-size formatters writer-opts headers]
+     :or   {batch-size 20 :prepend-header true}
+     :as   opts}
+    data]
+   (if (string? file)
+     (with-open [file-handle (io/writer file)]
+       (spit-csv file-handle opts data))
+     ; Else assume we already have a file handle
+     (->> data
+          (?>> (-> data first map?)
+               (vectorize {:header headers
+                           :prepend-header prepend-header}))
+          (?>> formatters (format-with formatters))
+          ; For save measure
+          (format-all-with str)
+          (batch batch-size)
+          (pc/<- (csv/write-csv writer-opts))
+          (reduce
+            (fn [w row]
+              (.write w)
+              w)
+            file)))))
+
+;; Like `slurp-and-process`, this is a convenience function which wraps together a set of opinionated options,
+;; ultimately writing out all data to the specified file handle or filename.
+;; Note that since we use `clojure-csv` here, we offer a `:batch` option that lets you format and write small
+;; batches of rows out at a time, to avoid contructing a massive string representation of all the data in the
+;; case of bigger data sets.
+
+
 ;; # One last example showing everything together
 ;;
 ;; Let's see how Semantic CSV in the context of a little data pipeline.
