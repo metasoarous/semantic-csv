@@ -301,7 +301,6 @@
    (let [header     (or header (-> data first keys))
          ;; This will be the formatted version we prepend if desired
          out-header (if format-header (mapv format-header header) header)]
-     (println out-header)
      (->> data
           (map
             (fn [row] (mapv (partial get row) header)))
@@ -310,20 +309,21 @@
 
 ;; Let's see this in action:
 ;;
-;;    => (let [data [{:this "a" :that "b"}
-;;                   {:this "x" :that "y"}]]
-;;         (vectorify data))
-;;    (["this" "that"]
-;;     ["a" "b"]
-;;     ["x" "y"])
+;;     => (let [data [{:this "a" :that "b"}
+;;                    {:this "x" :that "y"}]]
+;;          (vectorify data))
+;;     (["this" "that"]
+;;      ["a" "b"]
+;;      ["x" "y"])
 ;;
 ;; With some options:
 ;;
-;;    => (let [data [{:this "a" :that "b"}
-;;                   {:this "x" :that "y"}]]
-;;         (vectorify {:header [:that :this]
-;;                     :preprend-header false}
-;;                    data))
-;;    (["b" "a"]
-;;     ["y" "x"])
+;;     => (let [data [{:this "a" :that "b"}
+;;                    {:this "x" :that "y"}]]
+;;          (vectorify {:header [:that :this]
+;;                      :preprend-header false}
+;;                     data))
+;;     (["b" "a"]
+;;      ["y" "x"])
+
 
