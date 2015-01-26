@@ -277,9 +277,9 @@
 ;; One of the first things we'll need is a function that takes a sequence of maps and turns it into a sequence
 ;; of vectors given column name order:
 
-;; ## vectorify
+;; ## vectorize
 
-(defn vectorify
+(defn vectorize
   "Take a sequence of maps, and transform them into a sequence of vectors. Options:
 
   * `:header` - The header to be used. If not specified, this defaults to `(-> data first keys)`. Only
@@ -292,7 +292,7 @@
     keyword names such that the `:` is removed from their string representation. Passing a falsey value will
     leave the header unaltered in the output."
   ([data]
-   (vectorify {} data))
+   (vectorize {} data))
   ([{:keys [header prepend-header format-header]
      :or {prepend-header true format-header impl/stringify-keyword}}
     data]
@@ -311,7 +311,7 @@
 ;;
 ;;     => (let [data [{:this "a" :that "b"}
 ;;                    {:this "x" :that "y"}]]
-;;          (vectorify data))
+;;          (vectorize data))
 ;;     (["this" "that"]
 ;;      ["a" "b"]
 ;;      ["x" "y"])
@@ -320,7 +320,7 @@
 ;;
 ;;     => (let [data [{:this "a" :that "b"}
 ;;                    {:this "x" :that "y"}]]
-;;          (vectorify {:header [:that :this]
+;;          (vectorize {:header [:that :this]
 ;;                      :preprend-header false}
 ;;                     data))
 ;;     (["b" "a"]
@@ -332,7 +332,7 @@
 (defn format-with
   "Formats the values in `data` entries. First argument is a map of `colname -> format-fn` to be applied to
   entries for the given column name. Optional second argument is an options hash, with which you can specify
-  an option for `:ignore-first`, useful for when you've already applied `vectorify` and don't want to run the
+  an option for `:ignore-first`, useful for when you've already applied `vectorize` and don't want to run the
   format functions on the header row."
   ([formatters data]
    (format-with formatters {} data))
@@ -349,7 +349,7 @@
 ;;     => (let [data [{:this "a" :that "b"}
 ;;                    {:this "x" :that "y"}]]
 ;;          (->> data
-;;               vectorify
+;;               vectorize
 ;;               (format-with {:this (partial str "val-")}
 ;;                            {:ignore-first true})))
 ;;     (["this" "that"]
@@ -369,29 +369,113 @@
      (format-with formatters data))))
 
 
+;; ## batch
+
+(defn batch
+  "Takes sequence of items and returns a sequence of batches of items from the original
+  sequence, at most `n` long."
+  [n data]
+  (partition n n [] data))
+
+;; This function can be useful when working with `clojure-csv` when writing lazily.
+;; The `clojure-csv.core/write-csv` function does not actually write to a file, but just formats the data you
+;; pass in as a CSV string.
+;; If you're working with a lot of data, calling this function would build a single massive string of the
+;; results, and likely crash.
+;; To write _lazily_, you have to take some number of rows, write them, and repeat till you're done.
+;; Our `batch` function helps by giving you a lazy sequence of batches of `n` rows at a time, letting you pass
+;; _that_ through to something that writes off the chunks lazily.
+
+
+;; ## spit-csv
+
+(defn spit-csv
+  "Convenience function for spitting out CSV data to a file using `clojure-csv`.
+
+  * `file` - Can be either a filename string, or a file handle.
+  * `opts` - Optional hash of settings.
+  * `data` - Can be a sequence of either dictionaries or vectors; if the former, vectorize will be
+      called on the input with `:headers` argument specifiable through `opts`.
+
+  The Options hash can have the following mappings:
+
+  * `:batch-size` - How many rows to format and write at a time?
+  * `:formatters` - Formatters to be run on data. Will call `str` on all automatically reguardless.
+  * `:writer-opts` - Options hash to be passed along to `clojure-csv.core/write-csv`.
+  * `:headers` - Headers to be passed along to `vectorize`, if necessary.
+  * `:prepend-header` - Should the header be prepended to the data written if `vectorize` is called?"
+  ([file data]
+   (spit-csv file {} data))
+  ([file
+    {:keys [batch-size formatters writer-opts headers]
+     :or   {batch-size 20 :prepend-header true}
+     :as   opts}
+    data]
+   (if (string? file)
+     (with-open [file-handle (io/writer file)]
+       (spit-csv file-handle opts data))
+     ; Else assume we already have a file handle
+     (->> data
+          (?>> (-> data first map?)
+               (vectorize {:header headers
+                           :prepend-header prepend-header}))
+          (?>> formatters (format-with formatters))
+          ; For save measure
+          (format-all-with str)
+          (batch batch-size)
+          (pc/<- (csv/write-csv writer-opts))
+          (reduce
+            (fn [w row]
+              (.write w)
+              w)
+            file)))))
+
+;; Like `slurp-and-process`, this is a convenience function which wraps together a set of opinionated options,
+;; ultimately writing out all data to the specified file handle or filename.
+;; Note that since we use `clojure-csv` here, we offer a `:batch` option that lets you format and write small
+;; batches of rows out at a time, to avoid contructing a massive string representation of all the data in the
+;; case of bigger data sets.
+
+
 ;; # One last example showing everything together
 ;;
 ;; Let's see how Semantic CSV in the context of a little data pipeline.
-;; We're going to thread data in, tranform into maps to make things easier to work with, modify the data based
-;; on some computations, and then write the modified data out to a file, all maintaining laziness.
+;; We're going to thread data in, tranform into maps, run some computations for each row and assoc in,
+;; then write the modified data out to a file, all lazily.
+;; First let's show this with `clojure/data.csv`, which I find a little easier to use for writing.
+;;
+;;     (require '[clojure.data.csv :as cd-csv])
+;;
+;;     (with-open [in-file (io/reader "test/test.csv")
+;;                 out-file (io/writer "test-out.csv")]
+;;       (->>
+;;         (cd-csv/read-csv in-file)
+;;         remove-comments
+;;         mappify
+;;         (cast-with {:this ->int :that ->float})
+;;         ;; Do your processing...
+;;         (map
+;;           (fn [row]
+;;             (assoc row :jazz (* (:this row)
+;;                                 (:that row)))))
+;;         vectorize
+;;         (cd-csv/write-csv out-file)))
+;;
+;; Now let's see what this looks like with `clojure-csv`.
+;; Note that as mentioned above, `clojure-csv` doesn't actually handle file writing for you, just formatting
+;; into a CSV string.
+;; So, to maintain lazyness, you'll have to add a couple steps to the end.
+;; Additionally, it doesn't accept row items with anything that isn't a string, in contrast with
+;; `clojure/data.csv` which casts to a string for you, so we'll have to account for that as well.
 ;;
 ;;     (with-open [in-file (io/reader "test/test.csv")
 ;;                 out-file (io/writer "test-out.csv")]
 ;;       (->>
 ;;         (csv/parse-csv in-file)
-;;         remove-comments
-;;         mappify
-;;         (cast-with {:this ->int :that ->float})
-;;         ;; Do some of your own processing...
-;;         (map
-;;           (fn [row]
-;;             (assoc row :jazz (* (:this row)
-;;                                 (:that row)))))
-;;         vectorify
-;;         ; clojure-csv doesn't like non string values
+;;         ...
 ;;         (format-all-with str)
-;;         ; Convert into row strings
-;;         (map (comp csv/write-csv vector))
+;;         (batch 1)
+;;         (map csv/write-csv)
 ;;         (reduce
 ;;           (fn [w row]
 ;;             (.write w row)
