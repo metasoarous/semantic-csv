@@ -440,26 +440,42 @@
 ;; # One last example showing everything together
 ;;
 ;; Let's see how Semantic CSV in the context of a little data pipeline.
-;; We're going to thread data in, tranform into maps to make things easier to work with, modify the data based
-;; on some computations, and then write the modified data out to a file, all maintaining laziness.
+;; We're going to thread data in, tranform into maps, run some computations for each row and assoc in,
+;; then write the modified data out to a file, all lazily.
+;; First let's show this with `clojure/data.csv`, which I find a little easier to use for writing.
+;;
+;;     (require '[clojure.data.csv :as cd-csv])
 ;;
 ;;     (with-open [in-file (io/reader "test/test.csv")
 ;;                 out-file (io/writer "test-out.csv")]
 ;;       (->>
-;;         (csv/parse-csv in-file)
+;;         (cd-csv/read-csv in-file)
 ;;         remove-comments
 ;;         mappify
 ;;         (cast-with {:this ->int :that ->float})
-;;         ;; Do some of your own processing...
+;;         ;; Do your processing...
 ;;         (map
 ;;           (fn [row]
 ;;             (assoc row :jazz (* (:this row)
 ;;                                 (:that row)))))
 ;;         vectorize
-;;         ; clojure-csv doesn't like non string values
+;;         (cd-csv/write-csv out-file)))
+;;
+;; Now let's see what this looks like with `clojure-csv`.
+;; Note that as mentioned above, `clojure-csv` doesn't actually handle file writing for you, just formatting
+;; into a CSV string.
+;; So, to maintain lazyness, you'll have to add a couple steps to the end.
+;; Additionally, it doesn't accept row items with anything that isn't a string, in contrast with
+;; `clojure/data.csv` which casts to a string for you, so we'll have to account for that as well.
+;;
+;;     (with-open [in-file (io/reader "test/test.csv")
+;;                 out-file (io/writer "test-out.csv")]
+;;       (->>
+;;         (csv/parse-csv in-file)
+;;         ...
 ;;         (format-all-with str)
-;;         ; Convert into row strings
-;;         (map (comp csv/write-csv vector))
+;;         (batch 1)
+;;         (map csv/write-csv)
 ;;         (reduce
 ;;           (fn [w row]
 ;;             (.write w row)
