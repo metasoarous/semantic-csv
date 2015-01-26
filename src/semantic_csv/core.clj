@@ -369,3 +369,41 @@
      (format-with formatters data))))
 
 
+;; # One last example showing everything together
+;;
+;; Let's see how Semantic CSV in the context of a little data pipeline.
+;; We're going to thread data in, tranform into maps to make things easier to work with, modify the data based
+;; on some computations, and then write the modified data out to a file, all maintaining laziness.
+;;
+;;     (with-open [in-file (io/reader "test/test.csv")
+;;                 out-file (io/writer "test-out.csv")]
+;;       (->>
+;;         (csv/parse-csv in-file)
+;;         remove-comments
+;;         mappify
+;;         (cast-with {:this ->int :that ->float})
+;;         ;; Do some of your own processing...
+;;         (map
+;;           (fn [row]
+;;             (assoc row :jazz (* (:this row) (:that row)))))
+;;         vectorify
+;;         ; clojure-csv doesn't like non string values
+;;         (format-all-with str)
+;;         ; Convert into row strings
+;;         (map (comp csv/write-csv vector))
+;;         (reduce
+;;           (fn [w row]
+;;             (.write w row)
+;;             w)
+;;           out-file)))
+;;
+;; <br/>
+
+
+;; # That's it for the core API
+;;
+;; Hope you find this library useful.
+;; If you have questions or comments please either [submit an issue](https://github.com/metasoarous/semantic-csv/issues)
+;; or join us in the [dedicated chat room](https://gitter.im/metasoarous/semantic-csv).
+
+
