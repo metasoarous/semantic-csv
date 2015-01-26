@@ -357,3 +357,15 @@
 ;;      ["val-x" "y"])
 
 
+;; ## format-all-with
+
+(defn format-all-with
+  "Formats all row values with a single function. Alternatively, a second arg will restrict the row values on
+  which the function will be called."
+  ([formatter data]
+   (map (partial impl/format-row-with formatter) data))
+  ([formatter keys data]
+   (let [formatters (into {} (map vector keys formatter))]
+     (format-with formatters data))))
+
+

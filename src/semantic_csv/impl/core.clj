@@ -23,3 +23,14 @@
     :else         (str x)))
 
 
+(defn format-row-with
+  "Format the values of row with the given function. This gives us some flexbility with respect to formatting
+  both vectors and maps in similar fashion."
+  [formatter row]
+  (cond
+    (map? row)
+      (into {}
+        (map (fn [[k v]] [k (formatter v)]) row))
+    :else (mapv formatter row)))
+
+
