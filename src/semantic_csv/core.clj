@@ -255,7 +255,7 @@
 
 (defn slurp-csv
   "This convenience function let's you `parse-and-process` csv data given a csv filename. Note that it is _not_
-  lazy, and must read in all data so the file handle cna be closed."
+  lazy, and must read in all data so the file handle can be closed."
   [csv-filename & {:as opts}]
   (let [rest-options (dissoc opts :parser-opts)]
     (with-open [in-file (io/reader csv-filename)]
@@ -265,7 +265,7 @@
 ;; For the ultimate in _programmer_ laziness:
 ;;
 ;;     (slurp-csv "test/test.csv"
-;;                        :cast-fns {:this #(Integer/parseInt %)})
+;;                :cast-fns {:this #(Integer/parseInt %)})
 
 
 ;; <br/>
@@ -302,7 +302,7 @@
 ;;
 ;; We've already looked at `cast-with` and `cast-all`, which can be useful as output as well as input
 ;; processing functions.
-;; One of the first things we'll need is a function that takes a sequence of maps and turns it into a sequence
+;; Another important function we'll need is one that takes a sequence of maps and turns it into a sequence
 ;; of vectors since this is what most of our csv writing/formatting libraries will want.
 
 
@@ -413,7 +413,7 @@
                (vectorize {:header header
                            :prepend-header prepend-header}))
           ; For save measure
-          (format-all str)
+          (cast-all str)
           (batch batch-size)
           (map #(impl/apply-kwargs csv/write-csv % writer-opts))
           (reduce
@@ -432,7 +432,7 @@
 ;; <br/>
 ;; # One last example showing everything together
 ;;
-;; Let's see how Semantic CSV in the context of a little data pipeline.
+;; Let's see how Semantic CSV works in the context of a little data pipeline.
 ;; We're going to thread data in, tranform into maps, run some computations for each row and assoc in,
 ;; then write the modified data out to a file, all lazily.
 ;; First let's show this with `clojure/data.csv`, which I find a little easier to use for writing.
