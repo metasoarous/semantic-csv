@@ -18,11 +18,12 @@
 ;; ## Structure
 ;;
 ;; Semantic CSV _emphasizes_ a number of individual processing functions which can operate on the output of a
-;; syntactic csv parser such as `clojure.data.csv` or `clojure-csv`.
+;; syntactic csv parser such as `clojure.data.csv` or `clojure-csv`, or be used as preprocessing step when
+;; writing data using these tools.
 ;; This reflects a nice decoupling of grammar and semantics, in an effort to make this library as composable
 ;; and interoperable as possible.
-;; However, as a convenience, we offer a few functions which wrap these individual steps with a set of
-;; opinionated defaults and an option map for overriding the default behaviour.
+;; However, as a convenience, we also offer a few functions wrapping these individual steps with a set of
+;; opinionated defaults which can be customized.
 ;;
 ;; <br/>
 
@@ -43,13 +44,13 @@
 ;;              '[clojure-csv.core :as csv]
 ;;              '[clojure.java.io :as io])
 ;;
-;; Now let's take a tour through some of the processing functions we have available, starting with the reader
-;; functions.
+;; Now let's take a tour through some of the processing functions we have available, starting with the input
+;; processing functions.
 ;;
 ;; <br/>
 
 
-;; # Reader functions
+;; # Input processing functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; Note that all of these processing functions leave the rows collection as the final argument.
@@ -253,19 +254,19 @@
 ;;                        :cast-fns {:this ->int})
 
 
-;; # Writer functions
+;; # Output processing functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 ;; As with the input processing functions, the output processing functions are designed to be small, modular
-;; peices you compose as you see fit.
+;; peices you compose together.
 ;; Using these it's expected that you push your data through the processing functions and into a third party
 ;; writer.
-;; But also as with the readers, we offer some higher level, default-opinionated, configurable functions that
-;; do this composing for you, while the emphasis of the library remains with the composable functions.
+;; But as with the input processing functions, we offer some higher level, opinionated but configurable functions
+;; which automate some of this for you.
 ;;
 ;; One of the first things we'll need is a function that takes a sequence of maps and turns it into a sequence
-;; of vectors given column name order:
+;; of vectors since this is what most of our csv writing/formatting libraries will want.
 
 ;; ## vectorize
 
@@ -420,8 +421,8 @@
               w)
             file)))))
 
-;; Like `slurp-and-process`, this is a convenience function which wraps together a set of opinionated options,
-;; ultimately writing out all data to the specified file handle or filename.
+;; Like `slurp-and-process`, this is a convenience function which wraps together a set of opinionated options
+;; writing data to the specified file handle or filename.
 ;; Note that since we use `clojure-csv` here, we offer a `:batch` option that lets you format and write small
 ;; batches of rows out at a time, to avoid contructing a massive string representation of all the data in the
 ;; case of bigger data sets.
