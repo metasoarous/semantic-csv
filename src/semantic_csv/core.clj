@@ -379,7 +379,7 @@
 ;; <br/>
 ;; ## format-with
 
-(defn format-with
+(defn format-all
   "Just an alias for `cast-all`."
   [& args]
   (apply cast-all args))
@@ -439,7 +439,7 @@
                            :prepend-header prepend-header}))
           (?>> formatters (format-with formatters))
           ; For save measure
-          (format-with str)
+          (format-all str)
           (batch batch-size)
           (pc/<- (csv/write-csv writer-opts))
           (reduce
