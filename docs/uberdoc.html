@@ -2869,7 +2869,7 @@ net.brehaut.ClojureTools = (function (SH) {
 </div><div class="dependencies"><h3>dependencies</h3><table><tr><td class="dep-name">org.clojure/clojure</td><td class="dotted"><hr /></td><td class="dep-version">1.5.1</td></tr><tr><td class="dep-name">clojure-csv/clojure-csv</td><td class="dotted"><hr /></td><td class="dep-version">2.0.1</td></tr><tr><td class="dep-name">prismatic/plumbing</td><td class="dotted"><hr /></td><td class="dep-version">0.3.5</td></tr></table></div></td><td class="codes" style="text-align: center; vertical-align: middle;color: #666;padding-right:20px"><br /><br /><br />(this space intentionally left almost blank)</td></tr><tr><td class="docs"><div class="toc"><a name="toc"><h3>namespaces</h3></a><ul><li><a href="#semantic-csv.core">semantic-csv.core</a></li><li><a href="#semantic-csv.impl.core">semantic-csv.impl.core</a></li></ul></div></td><td class="codes">&nbsp;</td></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#semantic-csv.core" name="semantic-csv.core"><h1 class="project-name">semantic-csv.core</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><h1>Higher level CSV parsing/processing functionality</h1>
 
 <p>The two most popular CSV parsing libraries for Clojure presently - <code>clojure/data.csv</code> and <code>clojure-csv</code> -
-concern themselves only wtih the <em>syntax</em> of CSV;
+concern themselves only with the <em>syntax</em> of CSV;
 They take CSV text, transform it into a collection of vectors of string values, and that's it.
 Semantic CSV takes the next step by giving you tools for addressing the <em>semantics</em> of your data, helping
 you put it in a form that better reflects what it represents.</p>
@@ -2881,7 +2881,7 @@ you put it in a form that better reflects what it represents.</p>
 <li>Write from a collection of maps, given a header</li>
 <li>Apply casting/formatting functions by column name, while reading or writing</li>
 <li>Remove commented out lines (by default, those starting with <code>#</code>)</li>
-<li>Compatible with any CSV parsing library retruning/writing a sequence of row vectors</li>
+<li>Compatible with any CSV parsing library returning/writing a sequence of row vectors</li>
 <li>(SOON) A "sniffer" that reads in N lines, and uses them to guess column types</li>
 </ul>
 
@@ -3134,7 +3134,7 @@ So map or vector rows are fine, but lists or lazy sequences would not be.</p>
 
 <h1>Output processing functions</h1>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>As with the input processing functions, the output processing functions are designed to be small, modular
-peices you compose together.
+pieces you compose together.
 Using these it's expected that you push your data through the processing functions and into a third party
 writer.
 But as with the input processing functions, we offer some higher level, opinionated but configurable functions
@@ -3257,14 +3257,14 @@ Our <code>batch</code> function helps by giving you a lazy sequence of batches o
             file)))))</pre></td></tr><tr><td class="docs"><p>Like <code>slurp-csv</code>, this is a convenience function which wraps together a set of opinionated options
 for writing data to the specified file handle or filename.
 Note that since we use <code>clojure-csv</code> here, we offer a <code>:batch</code> option that lets you format and write small
-batches of rows out at a time, to avoid contructing a massive string representation of all the data in the
+batches of rows out at a time, to avoid constructing a massive string representation of all the data in the
 case of bigger data sets.</p>
 </td><td class="codes"></td></tr><tr><td class="docs"><p><br/></p>
 
 <h1>One last example showing everything together</h1>
 
 <p>Let's see how Semantic CSV works in the context of a little data pipeline.
-We're going to thread data in, tranform into maps, run some computations for each row and assoc in,
+We're going to thread data in, transform into maps, run some computations for each row and assoc in,
 then write the modified data out to a file, all lazily.
 First let's show this with <code>clojure/data.csv</code>, which I find a little easier to use for writing.</p>
 
@@ -3289,7 +3289,7 @@ First let's show this with <code>clojure/data.csv</code>, which I find a little 
 <p>Now let's see what this looks like with <code>clojure-csv</code>.
 Note that as mentioned above, <code>clojure-csv</code> doesn't actually handle file writing for you, just formatting
 into a CSV string.
-So, to maintain lazyness, you'll have to add a couple steps to the end.
+So, to maintain laziness, you'll have to add a couple steps to the end.
 Additionally, it doesn't accept row items with anything that isn't a string, in contrast with
 <code>clojure/data.csv</code> which casts to a string for you, so we'll have to account for that as well.</p>
 

@@ -1,7 +1,7 @@
 ;; # Higher level CSV parsing/processing functionality
 ;;
 ;; The two most popular CSV parsing libraries for Clojure presently - `clojure/data.csv` and `clojure-csv` -
-;; concern themselves only wtih the _syntax_ of CSV;
+;; concern themselves only with the _syntax_ of CSV;
 ;; They take CSV text, transform it into a collection of vectors of string values, and that's it.
 ;; Semantic CSV takes the next step by giving you tools for addressing the _semantics_ of your data, helping
 ;; you put it in a form that better reflects what it represents.
@@ -12,7 +12,7 @@
 ;; * Write from a collection of maps, given a header
 ;; * Apply casting/formatting functions by column name, while reading or writing
 ;; * Remove commented out lines (by default, those starting with `#`)
-;; * Compatible with any CSV parsing library retruning/writing a sequence of row vectors
+;; * Compatible with any CSV parsing library returning/writing a sequence of row vectors
 ;; * (SOON) A "sniffer" that reads in N lines, and uses them to guess column types
 ;;
 ;; ## Structure
@@ -294,7 +294,7 @@
 
 
 ;; As with the input processing functions, the output processing functions are designed to be small, modular
-;; peices you compose together.
+;; pieces you compose together.
 ;; Using these it's expected that you push your data through the processing functions and into a third party
 ;; writer.
 ;; But as with the input processing functions, we offer some higher level, opinionated but configurable functions
@@ -425,7 +425,7 @@
 ;; Like `slurp-csv`, this is a convenience function which wraps together a set of opinionated options
 ;; for writing data to the specified file handle or filename.
 ;; Note that since we use `clojure-csv` here, we offer a `:batch` option that lets you format and write small
-;; batches of rows out at a time, to avoid contructing a massive string representation of all the data in the
+;; batches of rows out at a time, to avoid constructing a massive string representation of all the data in the
 ;; case of bigger data sets.
 
 
@@ -433,7 +433,7 @@
 ;; # One last example showing everything together
 ;;
 ;; Let's see how Semantic CSV works in the context of a little data pipeline.
-;; We're going to thread data in, tranform into maps, run some computations for each row and assoc in,
+;; We're going to thread data in, transform into maps, run some computations for each row and assoc in,
 ;; then write the modified data out to a file, all lazily.
 ;; First let's show this with `clojure/data.csv`, which I find a little easier to use for writing.
 ;;
@@ -457,7 +457,7 @@
 ;; Now let's see what this looks like with `clojure-csv`.
 ;; Note that as mentioned above, `clojure-csv` doesn't actually handle file writing for you, just formatting
 ;; into a CSV string.
-;; So, to maintain lazyness, you'll have to add a couple steps to the end.
+;; So, to maintain laziness, you'll have to add a couple steps to the end.
 ;; Additionally, it doesn't accept row items with anything that isn't a string, in contrast with
 ;; `clojure/data.csv` which casts to a string for you, so we'll have to account for that as well.
 ;;
