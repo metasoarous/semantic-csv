@@ -302,7 +302,7 @@
 (defn vectorize
   "Take a sequence of maps, and transform them into a sequence of vectors. Options:
 
-  * `:header` - The header to be used. If not specified, this defaults to `(-> data first keys)`. Only
+  * `:header` - The header to be used. If not specified, this defaults to `(-> rows first keys)`. Only
     values corresponding to the specified header will be included in the output, and will be included in the
     order corresponding to this argument.
   * `:prepend-header` - Defaults to true, and controls whether the `:header` vector should be prepended
@@ -311,17 +311,17 @@
     the result prepended to the output sequence. The default behaviour is to leave strings alone but stringify
     keyword names such that the `:` is removed from their string representation. Passing a falsey value will
     leave the header unaltered in the output."
-  ([data]
-   (vectorize {} data))
+  ([rows]
+   (vectorize {} rows))
   ([{:keys [header prepend-header format-header]
      :or {prepend-header true format-header impl/stringify-keyword}}
-    data]
-   ;; Grab the specified header, or the keys from the first data item. We'll
+    rows]
+   ;; Grab the specified header, or the keys from the first row. We'll
    ;; use these to `get` the appropriate values for each row.
-   (let [header     (or header (-> data first keys))
+   (let [header     (or header (-> rows first keys))
          ;; This will be the formatted version we prepend if desired
          out-header (if format-header (mapv format-header header) header)]
-     (->> data
+     (->> rows
           (map
             (fn [row] (mapv (partial get row) header)))
           (?>> prepend-header (cons out-header))))))
@@ -380,8 +380,8 @@
 (defn batch
   "Takes sequence of items and returns a sequence of batches of items from the original
   sequence, at most `n` long."
-  [n data]
-  (partition n n [] data))
+  [n rows]
+  (partition n n [] rows))
 
 ;; This function can be useful when working with `clojure-csv` when writing lazily.
 ;; The `clojure-csv.core/write-csv` function does not actually write to a file, but just formats the data you
