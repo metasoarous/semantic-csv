@@ -400,30 +400,30 @@
 
   * `file` - Can be either a filename string, or a file handle.
   * `opts` - Optional hash of settings.
-  * `data` - Can be a sequence of either dictionaries or vectors; if the former, vectorize will be
-      called on the input with `:headers` argument specifiable through `opts`.
+  * `rows` - Can be a sequence of either maps or vectors; if the former, vectorize will be
+      called on the input with `:header` argument specifiable through `opts`.
 
   The Options hash can have the following mappings:
 
   * `:batch-size` - How many rows to format and write at a time?
-  * `:formatters` - Formatters to be run on data. Will call `str` on all automatically reguardless.
+  * `:formatters` - Formatters to be run on rows. Will call `str` on all automatically reguardless.
   * `:writer-opts` - Options hash to be passed along to `clojure-csv.core/write-csv`.
-  * `:headers` - Headers to be passed along to `vectorize`, if necessary.
-  * `:prepend-header` - Should the header be prepended to the data written if `vectorize` is called?"
-  ([file data]
-   (spit-csv file {} data))
+  * `:header` - Header to be passed along to `vectorize`, if necessary.
+  * `:prepend-header` - Should the header be prepended to the rows written if `vectorize` is called?"
+  ([file rows]
+   (spit-csv file {} rows))
   ([file
-    {:keys [batch-size formatters writer-opts headers]
-     :or   {batch-size 20 :prepend-header true}
+    {:keys [batch-size formatters writer-opts header prepend-header]
+     :or   {batch-size 20 prepend-header true}
      :as   opts}
-    data]
+    rows]
    (if (string? file)
      (with-open [file-handle (io/writer file)]
-       (spit-csv file-handle opts data))
+       (spit-csv file-handle opts rows))
      ; Else assume we already have a file handle
-     (->> data
-          (?>> (-> data first map?)
-               (vectorize {:header headers
+     (->> rows
+          (?>> (-> rows first map?)
+               (vectorize {:header header
                            :prepend-header prepend-header}))
           (?>> formatters (format-with formatters))
           ; For save measure
