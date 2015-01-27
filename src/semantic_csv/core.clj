@@ -441,10 +441,10 @@
           ; For save measure
           (format-all str)
           (batch batch-size)
-          (pc/<- (csv/write-csv writer-opts))
+          (map #(impl/apply-kwargs csv/write-csv % writer-opts))
           (reduce
-            (fn [w row]
-              (.write w)
+            (fn [w rowstr]
+              (.write w rowstr)
               w)
             file)))))
 
