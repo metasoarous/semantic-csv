@@ -130,16 +130,44 @@
 ;; ## cast-with
 
 (defn cast-with
-  "Casts the vals of each row according to `cast-fns`, which maps `column-name -> casting-fn`."
-  [cast-fns rows]
-  (map
-    (fn [row]
-      (reduce
-        (fn [row [col update-fn]]
-          (update-in row [col] update-fn))
-        row
-        cast-fns))
-    rows))
+  "Casts the vals of each row according to `cast-fns`, which maps `column-name -> casting-fn`. An optional
+  `opts` map can be used to specify:
+  
+  * `:ignore-first` - Ignore the first row in `rows`; Useful for preserving header rows"
+  ([cast-fns rows]
+   (cast-with cast-fns {} rows))
+  ([cast-fns {:keys [ignore-first] :as opts} rows]
+   (->> rows
+        (?>> ignore-first (drop 1))
+        (map
+          (fn [row]
+            (reduce
+              (fn [row [col update-fn]]
+                (update-in row [col] update-fn))
+              row
+              cast-fns)))
+        (?>> ignore-first (cons (first rows))))))
+
+
+(defn cast-all
+  "Casts _all_ row values with the given function. Optional `opts` arg accepts keyword args:
+
+  * `:only` - Only run `cast-fn` on these columns
+  * `:ignore-first` - As in `cast-with`, you can optionally ignore the first row"
+  ([cast-fn rows]
+   (map (partial impl/cast-row cast-fn) rows))
+  ([cast-fn {:keys [ignore-first only] :as opts} rows]
+   (case (mapv boolean [ignore-first only])
+     [false false]
+       (cast-all cast-fn rows)
+     [true false]
+       (->> rows
+            (drop 1)
+            (cast-all cast-fn rows)
+            (cons (first rows)))
+     (let [cast-fns (into {} (map vector only cast-fn))]
+       (cast-with cast-fns {:ignore-first ignore-first} rows)))))
+
 
 ;; Note that we have a couple of numeric columns in the play data we've been dealing with.
 ;; Let's try casting them as such using `cast-with`:
@@ -322,21 +350,11 @@
 ;; ## format-with
 
 (defn format-with
-  "Formats the values in `data` entries. First argument is a map of `colname -> format-fn` to be applied to
-  entries for the given column name. Optional second argument is an options hash, with which you can specify
-  an option for `:ignore-first`, useful for when you've already applied `vectorize` and don't want to run the
-  format functions on the header row."
-  ([formatters data]
-   (format-with formatters {} data))
-  ([formatters {:keys [ignore-first] :as opts} data]
-   (->> data
-        (?>> ignore-first (drop 1))
-        ;; A little silly, this actually just uses cast-with
-        (cast-with formatters data)
-        (?>> ignore-first (cons (first data))))))
+  "Just a wrapper around `cast-with`."
+  [& args]
+  (apply cast-with args))
 
-;; Note that this is actually just the `cast-with` function with an option for `:ignore-first`, potentially
-;; useful when you have a header row you want to ignore.
+;; If it makes you feel better to use this name on processing output, feel free.
 ;;
 ;;     => (let [data [{:this "a" :that "b"}
 ;;                    {:this "x" :that "y"}]]
@@ -352,13 +370,9 @@
 ;; ## format-all-with
 
 (defn format-all-with
-  "Formats all row values with a single function. Alternatively, a second arg will restrict the row values on
-  which the function will be called."
-  ([formatter data]
-   (map (partial impl/format-row-with formatter) data))
-  ([formatter keys data]
-   (let [formatters (into {} (map vector keys formatter))]
-     (format-with formatters data))))
+  "Just an alias for `cast-all`."
+  [& args]
+  (apply cast-all args))
 
 
 ;; ## batch
