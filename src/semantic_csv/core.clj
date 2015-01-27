@@ -1,29 +1,30 @@
 ;; # Higher level CSV parsing functionality
 ;;
-;; The two most popular CSV parsing libraries for Clojure presently - `clojure.data.csv` and `clojure-csv` -
+;; The two most popular CSV parsing libraries for Clojure presently - `clojure/data.csv` and `clojure-csv` -
 ;; concern themselves only wtih the _syntax_ of CSV;
-;; They take CSV text, transform it into a collection of vectors of string values, and nothing more.
-;; Semantic CSV takes the next step by giving you tools for addressing the _semantics_ of your data, helping you put it into the form that better reflects what it means, and what's most useful for you.
+;; They take CSV text, transform it into a collection of vectors of string values, and that's it.
+;; Semantic CSV takes the next step by giving you tools for addressing the _semantics_ of your data, helping
+;; you put it in a form that better reflects what it represents.
 ;;
 ;; ## Features
 ;;
 ;; * Absorb header row as a vector of column names, and return remaining rows as maps of `column-name -> row-val`
 ;; * Write from a collection of maps, given a header
-;; * When reading, apply casting functions by column name
-;; * When writing, apply formatting functions by column name
-;; * Remove lines starting with comment characters (by default `#`)
-;; * Fully compatible with any CSV parsing library that retruning/writing a sequence of row vectors
+;; * Apply casting/formatting functions by column name, while reading or writing
+;; * Remove commented out lines (by default, those starting with `#`)
+;; * Compatible with any CSV parsing library retruning/writing a sequence of row vectors
 ;; * (SOON) A "sniffer" that reads in N lines, and uses them to guess column types
 ;;
 ;; ## Structure
 ;;
-;; Semantic CSV _emphasizes_ a number of individual processing functions which can operate on the output of a
-;; syntactic csv parser such as `clojure.data.csv` or `clojure-csv`, or be used as preprocessing step when
-;; writing data using these tools.
-;; This reflects a nice decoupling of grammar and semantics, in an effort to make this library as composable
-;; and interoperable as possible.
-;; However, as a convenience, we also offer a few functions wrapping these individual steps with a set of
-;; opinionated defaults which can be customized.
+;; Semantic CSV is structured around a number of composable processing functions for transforming data as it
+;; comes out of or goes into a CSV file.
+;; This leaves basic parsing/formatting up to you and whatever tools you like to use, as long as those tools
+;; return/take sequences of vectors.
+;; This reflects a nice decoupling of grammar and semantics, maximizing interoperability.
+;; However, a couple of convenience functions are also provided which wrap these individual steps
+;; in an opinionated but customizable manner, helping you move quickly while prototyping or working at the
+;; REPL.
 ;;
 ;; <br/>
 
