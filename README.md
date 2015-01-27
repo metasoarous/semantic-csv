@@ -32,8 +32,10 @@ REPL.
 
 ## Installation
 
-For now, it is recommended you use [`lein-git-deps`](https://github.com/tobyhede/lein-git-deps), since this project is still in early alpha and is likely to be changing frequently.
-First, add the following to your `project.clj`:
+Assuming you're using Leiningen, just add `[semantic-csv "0.1.0-alpha1"]` to your dependencies.
+
+If you'd like to try the latest version (perhaps useful while things are changing frequently), you may want to try using [`lein-git-deps`](https://github.com/tobyhede/lein-git-deps).
+You can do this by adding the following to your `project.clj`:
 
     :plugins [[lein-git-deps "0.0.1-SNAPSHOT"]]
     :git-dependencies [["https://github.com/metasoarous/semantic-csv.git"]]
