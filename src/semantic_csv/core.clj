@@ -413,7 +413,7 @@
                (vectorize {:header header
                            :prepend-header prepend-header}))
           ; For save measure
-          (format-all str)
+          (cast-all str)
           (batch batch-size)
           (map #(impl/apply-kwargs csv/write-csv % writer-opts))
           (reduce
