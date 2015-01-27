@@ -3105,7 +3105,7 @@ So map or vector rows are fine, but lists or lazy sequences would not be.</p>
 
 <h2>slurp-csv</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>This convenience function let's you <code>parse-and-process</code> csv data given a csv filename. Note that it is <em>not</em>
-  lazy, and must read in all data so the file handle cna be closed.</p>
+  lazy, and must read in all data so the file handle can be closed.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn slurp-csv
   [csv-filename &amp; {:as opts}]
   (let [rest-options (dissoc opts :parser-opts)]
@@ -3114,7 +3114,7 @@ So map or vector rows are fine, but lists or lazy sequences would not be.</p>
         (impl/apply-kwargs parse-and-process in-file opts)))))</pre></td></tr><tr><td class="docs"><p>For the ultimate in <em>programmer</em> laziness:</p>
 
 <pre><code>(slurp-csv "test/test.csv"
-                   :cast-fns {:this #(Integer/parseInt %)})
+           :cast-fns {:this #(Integer/parseInt %)})
 </code></pre>
 </td><td class="codes"></td></tr><tr><td class="docs"><p><br/></p>
 
@@ -3142,7 +3142,7 @@ which automate some of this for you.</p>
 
 <p>We've already looked at <code>cast-with</code> and <code>cast-all</code>, which can be useful as output as well as input
 processing functions.
-One of the first things we'll need is a function that takes a sequence of maps and turns it into a sequence
+Another important function we'll need is one that takes a sequence of maps and turns it into a sequence
 of vectors since this is what most of our csv writing/formatting libraries will want.</p>
 </td><td class="codes"></td></tr><tr><td class="docs"><p><br/></p>
 
@@ -3247,7 +3247,7 @@ Our <code>batch</code> function helps by giving you a lazy sequence of batches o
                (vectorize {:header header
                            :prepend-header prepend-header}))
           ; For save measure
-          (format-all str)
+          (cast-all str)
           (batch batch-size)
           (map #(impl/apply-kwargs csv/write-csv % writer-opts))
           (reduce
@@ -3263,7 +3263,7 @@ case of bigger data sets.</p>
 
 <h1>One last example showing everything together</h1>
 
-<p>Let's see how Semantic CSV in the context of a little data pipeline.
+<p>Let's see how Semantic CSV works in the context of a little data pipeline.
 We're going to thread data in, tranform into maps, run some computations for each row and assoc in,
 then write the modified data out to a file, all lazily.
 First let's show this with <code>clojure/data.csv</code>, which I find a little easier to use for writing.</p>
