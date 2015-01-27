@@ -300,6 +300,8 @@
 ;; But as with the input processing functions, we offer some higher level, opinionated but configurable functions
 ;; which automate some of this for you.
 ;;
+;; We've already looked at `cast-with` and `cast-all`, which can be useful as output as well as input
+;; processing functions.
 ;; One of the first things we'll need is a function that takes a sequence of maps and turns it into a sequence
 ;; of vectors since this is what most of our csv writing/formatting libraries will want.
 
@@ -356,36 +358,6 @@
 
 
 ;; <br/>
-;; ## format-with
-
-(defn format-with
-  "Just a wrapper around `cast-with`."
-  [& args]
-  (apply cast-with args))
-
-;; If it makes you feel better to use this name on processing output, feel free.
-;;
-;;     => (let [data [{:this "a" :that "b"}
-;;                    {:this "x" :that "y"}]]
-;;          (->> data
-;;               vectorize
-;;               (format-with {:this (partial str "val-")}
-;;                            {:ignore-first true})))
-;;     (["this" "that"]
-;;      ["val-a" "b"]
-;;      ["val-x" "y"])
-
-
-;; <br/>
-;; ## format-with
-
-(defn format-with
-  "Just an alias for `cast-all`."
-  [& args]
-  (apply cast-all args))
-
-
-;; <br/>
 ;; ## batch
 
 (defn batch
@@ -418,14 +390,16 @@
   The Options hash can have the following mappings:
 
   * `:batch-size` - How many rows to format and write at a time?
-  * `:formatters` - Formatters to be run on rows. Will call `str` on all automatically reguardless.
+  * `:cast-fns` - Formatters to be run on row values. The names used as keys in this map should correspond
+     to keys if rows are maps, and positional indices if they're vectors. Note that this function will call
+     `str` on all values just before writing.
   * `:writer-opts` - Options hash to be passed along to `clojure-csv.core/write-csv`.
   * `:header` - Header to be passed along to `vectorize`, if necessary.
   * `:prepend-header` - Should the header be prepended to the rows written if `vectorize` is called?"
   ([file rows]
    (spit-csv file {} rows))
   ([file
-    {:keys [batch-size formatters writer-opts header prepend-header]
+    {:keys [batch-size cast-fns writer-opts header prepend-header]
      :or   {batch-size 20 prepend-header true}
      :as   opts}
     rows]
@@ -434,17 +408,17 @@
        (spit-csv file-handle opts rows))
      ; Else assume we already have a file handle
      (->> rows
+          (?>> cast-fns (cast-with cast-fns))
           (?>> (-> rows first map?)
                (vectorize {:header header
                            :prepend-header prepend-header}))
-          (?>> formatters (format-with formatters))
           ; For save measure
-          (format-with str)
+          (format-all str)
           (batch batch-size)
-          (pc/<- (csv/write-csv writer-opts))
+          (map #(impl/apply-kwargs csv/write-csv % writer-opts))
           (reduce
-            (fn [w row]
-              (.write w)
+            (fn [w rowstr]
+              (.write w rowstr)
               w)
             file)))))
 

@@ -5,12 +5,12 @@
 
 (def test-fn "test/test.csv")
 
-(deftest slurp-and-process-test
+(deftest slurp-csv-test
   (testing "should work"
-    (is (= (first (slurp-and-process test-fn))
+    (is (= (first (slurp-csv test-fn))
            {:this "1" :that "2" :more "stuff"})))
   (testing "should work with cast-fns"
-    (is (= (first (slurp-and-process test-fn :cast-fns {:this ->int}))
+    (is (= (first (slurp-csv test-fn :cast-fns {:this ->int}))
            {:this 1 :that "2" :more "stuff"}))))
 
 
