@@ -80,9 +80,32 @@ And for the truly irreverant... (who don't need _computer_ laziness):
 ```
 ### Writing CSV data
 
-As with the reader processing functions, the writer processing functions come in modular peices you can use as you see fit.
+As with the input processing functions, the writer processing functions come in modular peices you can use as you see fit.
+This time let's use `clojure/data.csv`:
 
-**TODO: WIP**
+```clojure
+(require '[clojure.data.csv :as cd-csv])
+
+(def data [{:this 1, :that "2", :more "stuff"}
+           {:this 2, :that "3", :more "other yeah"}])
+
+(with-open [out-file (io/writer "test.csv")]
+  (->> data
+       (cast-with {:this #(-> % float str)})
+       vectorize
+       (cd-csv/write-csv out-file)))
+```
+
+And again, as with the input processing functions, here we also provide a quick and dirty, opinionated convenience function for automating some of this:
+
+```clojure
+(spit-csv "test2.csv"
+          {:cast-fns {:this #(-> % float str)}}
+          data)
+```
+
+And there you have it.
+
 
 ## License
 
