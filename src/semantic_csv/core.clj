@@ -1,28 +1,29 @@
-;; # Higher level CSV parsing functionality
+;; # Higher level CSV parsing/processing functionality
 ;;
-;; The two most popular CSV parsing libraries for Clojure presently - `clojure.data.csv` and `clojure-csv` -
+;; The two most popular CSV parsing libraries for Clojure presently - `clojure/data.csv` and `clojure-csv` -
 ;; concern themselves only wtih the _syntax_ of CSV;
-;; They take CSV text, transform it into a collection of vectors of string values, and nothing more.
-;; Semantic CSV takes the next step by giving you tools for addressing the _semantics_ of your data, helping you put it into the form that better reflects what it means, and what's most useful for you.
+;; They take CSV text, transform it into a collection of vectors of string values, and that's it.
+;; Semantic CSV takes the next step by giving you tools for addressing the _semantics_ of your data, helping
+;; you put it in a form that better reflects what it represents.
 ;;
 ;; ## Features
 ;;
 ;; * Absorb header row as a vector of column names, and return remaining rows as maps of `column-name -> row-val`
 ;; * Write from a collection of maps, given a header
-;; * When reading, apply casting functions by column name
-;; * When writing, apply formatting functions by column name
-;; * Remove lines starting with comment characters (by default `#`)
-;; * Fully compatible with any CSV parsing library that retruning/writing a sequence of row vectors
+;; * Apply casting/formatting functions by column name, while reading or writing
+;; * Remove commented out lines (by default, those starting with `#`)
+;; * Compatible with any CSV parsing library retruning/writing a sequence of row vectors
 ;; * (SOON) A "sniffer" that reads in N lines, and uses them to guess column types
 ;;
 ;; ## Structure
 ;;
-;; Semantic CSV _emphasizes_ a number of individual processing functions which can operate on the output of a
-;; syntactic csv parser such as `clojure.data.csv` or `clojure-csv`.
-;; This reflects a nice decoupling of grammar and semantics, in an effort to make this library as composable
-;; and interoperable as possible.
-;; However, as a convenience, we offer a few functions which wrap these individual steps with a set of
-;; opinionated defaults and an option map for overriding the default behaviour.
+;; Semantic CSV is structured around a number of composable processing functions for transforming data as it
+;; comes out of or goes into a CSV file.
+;; This leaves room for you to use whatever parsing/formatting tools you like, reflecting a nice decoupling
+;; of grammar and semantics.
+;; However, a couple of convenience functions are also provided which wrap these individual steps
+;; in an opinionated but customizable manner, helping you move quickly while prototyping or working at the
+;; REPL.
 ;;
 ;; <br/>
 
@@ -43,13 +44,13 @@
 ;;              '[clojure-csv.core :as csv]
 ;;              '[clojure.java.io :as io])
 ;;
-;; Now let's take a tour through some of the processing functions we have available, starting with the reader
-;; functions.
+;; Now let's take a tour through some of the processing functions we have available, starting with the input
+;; processing functions.
 ;;
 ;; <br/>
 
 
-;; # Reader functions
+;; # Input processing functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; Note that all of these processing functions leave the rows collection as the final argument.
@@ -58,30 +59,21 @@
 ;; You're welcome.
 
 
-;; ## mappify-row
-
-(defn mappify-row
-  "Translates a single row of values into a map of `colname -> val`, given colnames in `header`."
-  [header row]
-  (into {} (map vector header row)))
-
-;; We leave this in the main API as a courtesy in case you'd like to map lines over this function in your own
-;; fashion.
-;; However, in general, you'll want to use the following instead:
-
-
+;; <br/>
 ;; ## mappify
 
 (defn mappify
   "Comsumes the first item as a header, and returns a seq of the remaining items as a maps with the header
-  values as keys (see mappify-row)."
+  values as keys. Note that an optional `opts` map can be passed as a first arg, with the following option:
+ 
+  * `:keyify` - specify whether header/column names should be turned into keywords (deafults to true)"
   ([rows]
    (mappify {} rows))
   ([{:keys [keyify] :or {keyify true} :as opts}
     rows]
    (let [header (first rows)
          header (if keyify (mapv keyword header) header)]
-     (map (partial mappify-row header) (rest rows)))))
+     (map (partial impl/mappify-row header) (rest rows)))))
 
 ;; Here's an example to whet our whistle:
 ;;
@@ -99,6 +91,7 @@
 ;; We can solve this with the following function:
 
 
+;; <br/>
 ;; ## remove-comments
 
 (defn remove-comments
@@ -135,19 +128,27 @@
 ;; rather avoid.]
 
 
+;; <br/>
 ;; ## cast-with
 
 (defn cast-with
-  "Casts the vals of each row according to `cast-fns`, which maps `column-name -> casting-fn`."
-  [cast-fns rows]
-  (map
-    (fn [row]
-      (reduce
-        (fn [row [col update-fn]]
-          (update-in row [col] update-fn))
-        row
-        cast-fns))
-    rows))
+  "Casts the vals of each row according to `cast-fns`, which maps `column-name -> casting-fn`. An optional
+  `opts` map can be used to specify:
+  
+  * `:ignore-first` - Ignore the first row in `rows`; Useful for preserving header rows"
+  ([cast-fns rows]
+   (cast-with cast-fns {} rows))
+  ([cast-fns {:keys [ignore-first] :as opts} rows]
+   (->> rows
+        (?>> ignore-first (drop 1))
+        (map
+          (fn [row]
+            (reduce
+              (fn [row [col update-fn]]
+                (update-in row [col] update-fn))
+              row
+              cast-fns)))
+        (?>> ignore-first (cons (first rows))))))
 
 ;; Note that we have a couple of numeric columns in the play data we've been dealing with.
 ;; Let's try casting them as such using `cast-with`:
@@ -169,25 +170,48 @@
 ;; So map or vector rows are fine, but lists or lazy sequences would not be.
 
 
+;; <br/>
+;; ## cast-all
+
+(defn cast-all
+  "Casts _multiple_ column values with the given function. Optional `opts` map can be used to specify:
+
+  * `:only` - Only run `cast-fn` on these columns (default is to run on all columns)
+  * `:ignore-first` - As in `cast-with`, you can optionally ignore the first row"
+  ([cast-fn rows]
+   (map (partial impl/cast-row cast-fn) rows))
+  ([cast-fn {:keys [ignore-first only] :as opts} rows]
+   (case (mapv boolean [ignore-first only])
+     [false false]
+       (cast-all cast-fn rows)
+     [true false]
+       (->> rows
+            (drop 1)
+            (cast-all cast-fn rows)
+            (cons (first rows)))
+     (let [cast-fns (into {} (map vector only cast-fn))]
+       (cast-with cast-fns {:ignore-first ignore-first} rows)))))
+
+
+;; <br/>
 ;; ## process
 
 (defn process
   "This function wraps together all of the various input processing capabilities into one, with options
-  controlled by an opts hash with a heavy-handed/opinionated set of defaults:
+  controlled by an `opts` hash with opinionated defaults:
 
-  * `:header`: bool; consume the first row as a header?
-  * `:comment-re`: specify a regular expression to use for commenting out lines, or something falsey
+  * `:header` - bool; consume the first row as a header?
+  * `:comment-re` - specify a regular expression to use for commenting out lines, or something falsey
      if filtering out comment lines is not desired.
-  * `:remove-empty`: also remove empty rows? Defaults to true.
-  * `:cast-fns`: optional map of `colname | index -> cast-fn`; row maps will have the values as output by the
-     assigned `cast-fn`.
-              `(cast-fns row-name)` to the string val"
+  * `:remove-empty` - also remove empty rows? Defaults to true.
+  * `:cast-fns` - optional map of `colname | index -> cast-fn`; row maps will have the values as output by the
+     assigned `cast-fn`."
   ([{:keys [comment-re header remove-empty cast-fns]
-                  :or   {comment-re   #"^\#"
-                         header       true
-                         remove-empty true
-                         cast-fns     {}}
-                  :as opts}
+     :or   {comment-re   #"^\#"
+            header       true
+            remove-empty true
+            cast-fns     {}}
+     :as opts}
     rows]
    (->> rows
         (?>> comment-re (remove-comments comment-re))
@@ -204,6 +228,8 @@
 ;;         (process (csv/parse-csv in-file)
 ;;                  :cast-fns {:this #(Integer/parseInt %)})))
 
+
+;; <br/>
 ;; ## parse-and-process
 
 (defn parse-and-process
@@ -224,9 +250,10 @@
 ;;                            :cast-fns {:this #(Integer/parseInt %)})))
 
 
-;; ## slurp-and-process
+;; <br/>
+;; ## slurp-csv
 
-(defn slurp-and-process
+(defn slurp-csv
   "This convenience function let's you `parse-and-process` csv data given a csv filename. Note that it is _not_
   lazy, and must read in all data so the file handle cna be closed."
   [csv-filename & {:as opts}]
@@ -237,14 +264,12 @@
 
 ;; For the ultimate in _programmer_ laziness:
 ;;
-;;     (slurp-and-process "test/test.csv"
+;;     (slurp-csv "test/test.csv"
 ;;                        :cast-fns {:this #(Integer/parseInt %)})
 
 
 ;; <br/>
-
-
-;; # Some parsing functions for your convenience
+;; # Some casting functions for your convenience
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; These functions can be imported and used in your `:cast-fns` specification
@@ -259,30 +284,33 @@
   [string]
   (Float/parseFloat string))
 
-;;     (slurp-and-process "test/test.csv"
+;;     (slurp-csv "test/test.csv"
 ;;                        :cast-fns {:this ->int})
 
 
-;; # Writer functions
+;; <br/>
+;; # Output processing functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 ;; As with the input processing functions, the output processing functions are designed to be small, modular
-;; peices you compose as you see fit.
+;; peices you compose together.
 ;; Using these it's expected that you push your data through the processing functions and into a third party
 ;; writer.
-;; But also as with the readers, we offer some higher level, default-opinionated, configurable functions that
-;; do this composing for you, while the emphasis of the library remains with the composable functions.
+;; But as with the input processing functions, we offer some higher level, opinionated but configurable functions
+;; which automate some of this for you.
 ;;
 ;; One of the first things we'll need is a function that takes a sequence of maps and turns it into a sequence
-;; of vectors given column name order:
+;; of vectors since this is what most of our csv writing/formatting libraries will want.
 
+
+;; <br/>
 ;; ## vectorize
 
 (defn vectorize
   "Take a sequence of maps, and transform them into a sequence of vectors. Options:
 
-  * `:header` - The header to be used. If not specified, this defaults to `(-> data first keys)`. Only
+  * `:header` - The header to be used. If not specified, this defaults to `(-> rows first keys)`. Only
     values corresponding to the specified header will be included in the output, and will be included in the
     order corresponding to this argument.
   * `:prepend-header` - Defaults to true, and controls whether the `:header` vector should be prepended
@@ -291,17 +319,17 @@
     the result prepended to the output sequence. The default behaviour is to leave strings alone but stringify
     keyword names such that the `:` is removed from their string representation. Passing a falsey value will
     leave the header unaltered in the output."
-  ([data]
-   (vectorize {} data))
+  ([rows]
+   (vectorize {} rows))
   ([{:keys [header prepend-header format-header]
      :or {prepend-header true format-header impl/stringify-keyword}}
-    data]
-   ;; Grab the specified header, or the keys from the first data item. We'll
+    rows]
+   ;; Grab the specified header, or the keys from the first row. We'll
    ;; use these to `get` the appropriate values for each row.
-   (let [header     (or header (-> data first keys))
+   (let [header     (or header (-> rows first keys))
          ;; This will be the formatted version we prepend if desired
          out-header (if format-header (mapv format-header header) header)]
-     (->> data
+     (->> rows
           (map
             (fn [row] (mapv (partial get row) header)))
           (?>> prepend-header (cons out-header))))))
@@ -327,24 +355,15 @@
 ;;      ["y" "x"])
 
 
+;; <br/>
 ;; ## format-with
 
 (defn format-with
-  "Formats the values in `data` entries. First argument is a map of `colname -> format-fn` to be applied to
-  entries for the given column name. Optional second argument is an options hash, with which you can specify
-  an option for `:ignore-first`, useful for when you've already applied `vectorize` and don't want to run the
-  format functions on the header row."
-  ([formatters data]
-   (format-with formatters {} data))
-  ([formatters {:keys [ignore-first] :as opts} data]
-   (->> data
-        (?>> ignore-first (drop 1))
-        ;; A little silly, this actually just uses cast-with
-        (cast-with formatters data)
-        (?>> ignore-first (cons (first data))))))
+  "Just a wrapper around `cast-with`."
+  [& args]
+  (apply cast-with args))
 
-;; Note that this is actually just the `cast-with` function with an option for `:ignore-first`, potentially
-;; useful when you have a header row you want to ignore.
+;; If it makes you feel better to use this name on processing output, feel free.
 ;;
 ;;     => (let [data [{:this "a" :that "b"}
 ;;                    {:this "x" :that "y"}]]
@@ -357,25 +376,23 @@
 ;;      ["val-x" "y"])
 
 
-;; ## format-all-with
+;; <br/>
+;; ## format-with
 
-(defn format-all-with
-  "Formats all row values with a single function. Alternatively, a second arg will restrict the row values on
-  which the function will be called."
-  ([formatter data]
-   (map (partial impl/format-row-with formatter) data))
-  ([formatter keys data]
-   (let [formatters (into {} (map vector keys formatter))]
-     (format-with formatters data))))
+(defn format-with
+  "Just an alias for `cast-all`."
+  [& args]
+  (apply cast-all args))
 
 
+;; <br/>
 ;; ## batch
 
 (defn batch
   "Takes sequence of items and returns a sequence of batches of items from the original
   sequence, at most `n` long."
-  [n data]
-  (partition n n [] data))
+  [n rows]
+  (partition n n [] rows))
 
 ;; This function can be useful when working with `clojure-csv` when writing lazily.
 ;; The `clojure-csv.core/write-csv` function does not actually write to a file, but just formats the data you
@@ -387,6 +404,7 @@
 ;; _that_ through to something that writes off the chunks lazily.
 
 
+;; <br/>
 ;; ## spit-csv
 
 (defn spit-csv
@@ -394,34 +412,34 @@
 
   * `file` - Can be either a filename string, or a file handle.
   * `opts` - Optional hash of settings.
-  * `data` - Can be a sequence of either dictionaries or vectors; if the former, vectorize will be
-      called on the input with `:headers` argument specifiable through `opts`.
+  * `rows` - Can be a sequence of either maps or vectors; if the former, vectorize will be
+      called on the input with `:header` argument specifiable through `opts`.
 
   The Options hash can have the following mappings:
 
   * `:batch-size` - How many rows to format and write at a time?
-  * `:formatters` - Formatters to be run on data. Will call `str` on all automatically reguardless.
+  * `:formatters` - Formatters to be run on rows. Will call `str` on all automatically reguardless.
   * `:writer-opts` - Options hash to be passed along to `clojure-csv.core/write-csv`.
-  * `:headers` - Headers to be passed along to `vectorize`, if necessary.
-  * `:prepend-header` - Should the header be prepended to the data written if `vectorize` is called?"
-  ([file data]
-   (spit-csv file {} data))
+  * `:header` - Header to be passed along to `vectorize`, if necessary.
+  * `:prepend-header` - Should the header be prepended to the rows written if `vectorize` is called?"
+  ([file rows]
+   (spit-csv file {} rows))
   ([file
-    {:keys [batch-size formatters writer-opts headers]
-     :or   {batch-size 20 :prepend-header true}
+    {:keys [batch-size formatters writer-opts header prepend-header]
+     :or   {batch-size 20 prepend-header true}
      :as   opts}
-    data]
+    rows]
    (if (string? file)
      (with-open [file-handle (io/writer file)]
-       (spit-csv file-handle opts data))
+       (spit-csv file-handle opts rows))
      ; Else assume we already have a file handle
-     (->> data
-          (?>> (-> data first map?)
-               (vectorize {:header headers
+     (->> rows
+          (?>> (-> rows first map?)
+               (vectorize {:header header
                            :prepend-header prepend-header}))
           (?>> formatters (format-with formatters))
           ; For save measure
-          (format-all-with str)
+          (format-with str)
           (batch batch-size)
           (pc/<- (csv/write-csv writer-opts))
           (reduce
@@ -430,13 +448,14 @@
               w)
             file)))))
 
-;; Like `slurp-and-process`, this is a convenience function which wraps together a set of opinionated options,
-;; ultimately writing out all data to the specified file handle or filename.
+;; Like `slurp-csv`, this is a convenience function which wraps together a set of opinionated options
+;; for writing data to the specified file handle or filename.
 ;; Note that since we use `clojure-csv` here, we offer a `:batch` option that lets you format and write small
 ;; batches of rows out at a time, to avoid contructing a massive string representation of all the data in the
 ;; case of bigger data sets.
 
 
+;; <br/>
 ;; # One last example showing everything together
 ;;
 ;; Let's see how Semantic CSV in the context of a little data pipeline.
@@ -473,7 +492,7 @@
 ;;       (->>
 ;;         (csv/parse-csv in-file)
 ;;         ...
-;;         (format-all-with str)
+;;         (format-with str)
 ;;         (batch 1)
 ;;         (map csv/write-csv)
 ;;         (reduce

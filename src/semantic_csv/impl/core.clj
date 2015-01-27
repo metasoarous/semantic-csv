@@ -2,6 +2,12 @@
   "This namespace consists of implementation details for the main API")
 
 
+(defn mappify-row
+  "Translates a single row of values into a map of `colname -> val`, given colnames in `header`."
+  [header row]
+  (into {} (map vector header row)))
+
+
 (defn apply-kwargs
   "Utility that takes a function f, any number of regular args, and a final kw-args argument which will be
   splatted in as a final argument"
@@ -23,14 +29,14 @@
     :else         (str x)))
 
 
-(defn format-row-with
+(defn cast-row
   "Format the values of row with the given function. This gives us some flexbility with respect to formatting
   both vectors and maps in similar fashion."
-  [formatter row]
+  [cast-fn row]
   (cond
     (map? row)
       (into {}
-        (map (fn [[k v]] [k (formatter v)]) row))
-    :else (mapv formatter row)))
+        (map (fn [[k v]] [k (cast-fn v)]) row))
+    :else (mapv cast-fn row)))
 
 
