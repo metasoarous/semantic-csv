@@ -3080,8 +3080,8 @@ So map or vector rows are fine, but lists or lazy sequences would not be.</p>
 
 <pre><code>(with-open [in-file (io/reader "test/test.csv")]
   (doall
-    (process (csv/parse-csv in-file)
-             :cast-fns {:this #(Integer/parseInt %)})))
+    (process {:cast-fns {:this #(Integer/parseInt %)}}
+             (csv/parse-csv in-file))))
 </code></pre>
 </td><td class="codes"></td></tr><tr><td class="docs"><p><br/></p>
 
@@ -3128,7 +3128,7 @@ So map or vector rows are fine, but lists or lazy sequences would not be.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn -&gt;float
   [string]
   (Float/parseFloat string))</pre></td></tr><tr><td class="docs"><pre><code>(slurp-csv "test/test.csv"
-                   :cast-fns {:this -&gt;int})
+           :cast-fns {:this -&gt;int})
 </code></pre>
 </td><td class="codes"></td></tr><tr><td class="docs"><p><br/></p>
 
@@ -3189,7 +3189,7 @@ leave the header unaltered in the output.</li>
 <pre><code>=&gt; (let [data [{:this "a" :that "b"}
                {:this "x" :that "y"}]]
      (vectorize {:header [:that :this]
-                 :preprend-header false}
+                 :prepend-header false}
                 data))
 (["b" "a"]
  ["y" "x"])
@@ -3298,7 +3298,7 @@ Additionally, it doesn't accept row items with anything that isn't a string, in 
   (-&gt;&gt;
     (csv/parse-csv in-file)
     ...
-    (format-with str)
+    (cast-all str)
     (batch 1)
     (map csv/write-csv)
     (reduce

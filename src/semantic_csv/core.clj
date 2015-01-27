@@ -225,8 +225,8 @@
 ;;
 ;;     (with-open [in-file (io/reader "test/test.csv")]
 ;;       (doall
-;;         (process (csv/parse-csv in-file)
-;;                  :cast-fns {:this #(Integer/parseInt %)})))
+;;         (process {:cast-fns {:this #(Integer/parseInt %)}}
+;;                  (csv/parse-csv in-file))))
 
 
 ;; <br/>
@@ -285,7 +285,7 @@
   (Float/parseFloat string))
 
 ;;     (slurp-csv "test/test.csv"
-;;                        :cast-fns {:this ->int})
+;;                :cast-fns {:this ->int})
 
 
 ;; <br/>
@@ -351,7 +351,7 @@
 ;;     => (let [data [{:this "a" :that "b"}
 ;;                    {:this "x" :that "y"}]]
 ;;          (vectorize {:header [:that :this]
-;;                      :preprend-header false}
+;;                      :prepend-header false}
 ;;                     data))
 ;;     (["b" "a"]
 ;;      ["y" "x"])
@@ -466,7 +466,7 @@
 ;;       (->>
 ;;         (csv/parse-csv in-file)
 ;;         ...
-;;         (format-with str)
+;;         (cast-all str)
 ;;         (batch 1)
 ;;         (map csv/write-csv)
 ;;         (reduce
