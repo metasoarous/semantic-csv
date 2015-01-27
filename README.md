@@ -5,7 +5,7 @@
 **A Clojure library with higher level CSV parsing/processing functionality.**
 
 The two most popular CSV parsing libraries for Clojure presently - `clojure/data.csv` and `clojure-csv` -
-concern themselves only wtih the _syntax_ of CSV;
+concern themselves only with the _syntax_ of CSV;
 They take CSV text, transform it into a collection of vectors of string values, and that's it.
 Semantic CSV takes the next step by giving you tools for addressing the _semantics_ of your data, helping
 you put it in a form that better reflects what it represents.
@@ -16,7 +16,7 @@ you put it in a form that better reflects what it represents.
 * Write from a collection of maps, given a header
 * Apply casting/formatting functions by column name, while reading or writing
 * Remove commented out lines (by default, those starting with `#`)
-* Compatible with any CSV parsing library retruning/writing a sequence of row vectors
+* Compatible with any CSV parsing library returning/writing a sequence of row vectors
 * (SOON) A "sniffer" that reads in N lines, and uses them to guess column types
 
 ## Structure
@@ -73,7 +73,7 @@ However, some opinionated, but configurable convenience functions are also provi
   (doall
     (process (csv/parse-csv in-file))))
 ```
-And for the truly irreverant... (who don't need _computer_ laziness):
+And for the truly irreverent... (who don't need _computer_ laziness):
 
 ```clojure
 (slurp-and-process "test/test.csv")
