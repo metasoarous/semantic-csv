@@ -193,7 +193,7 @@
 
 (defn process
   "This function wraps together all of the various input processing capabilities into one, with options
-  controlled by an opts hash with a heavy-handed/opinionated set of defaults:
+  controlled by an opts hash with opinionated defaults:
 
   * `:header` - bool; consume the first row as a header?
   * `:comment-re` - specify a regular expression to use for commenting out lines, or something falsey
@@ -202,11 +202,11 @@
   * `:cast-fns` - optional map of `colname | index -> cast-fn`; row maps will have the values as output by the
      assigned `cast-fn`."
   ([{:keys [comment-re header remove-empty cast-fns]
-                  :or   {comment-re   #"^\#"
-                         header       true
-                         remove-empty true
-                         cast-fns     {}}
-                  :as opts}
+     :or   {comment-re   #"^\#"
+            header       true
+            remove-empty true
+            cast-fns     {}}
+     :as opts}
     rows]
    (->> rows
         (?>> comment-re (remove-comments comment-re))
@@ -437,7 +437,7 @@
             file)))))
 
 ;; Like `slurp-and-process`, this is a convenience function which wraps together a set of opinionated options
-;; writing data to the specified file handle or filename.
+;; for writing data to the specified file handle or filename.
 ;; Note that since we use `clojure-csv` here, we offer a `:batch` option that lets you format and write small
 ;; batches of rows out at a time, to avoid contructing a massive string representation of all the data in the
 ;; case of bigger data sets.
