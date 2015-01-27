@@ -72,8 +72,10 @@
   ([{:keys [keyify] :or {keyify true} :as opts}
     rows]
    (let [header (first rows)
-         header (if keyify (mapv keyword header) header)]
-     (map (partial impl/mappify-row header) (rest rows)))))
+         header (if keyify (mapv keyword header) header)
+         s (apply create-struct header)]
+     (for [r (rest rows)]
+       (apply struct s r)))))
 
 ;; Here's an example to whet our whistle:
 ;;
