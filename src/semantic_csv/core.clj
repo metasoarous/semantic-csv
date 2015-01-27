@@ -58,30 +58,20 @@
 ;; You're welcome.
 
 
-;; ## mappify-row
-
-(defn mappify-row
-  "Translates a single row of values into a map of `colname -> val`, given colnames in `header`."
-  [header row]
-  (into {} (map vector header row)))
-
-;; We leave this in the main API as a courtesy in case you'd like to map lines over this function in your own
-;; fashion.
-;; However, in general, you'll want to use the following instead:
-
-
 ;; ## mappify
 
 (defn mappify
   "Comsumes the first item as a header, and returns a seq of the remaining items as a maps with the header
-  values as keys (see mappify-row)."
+  values as keys. Note that an optional `opts` map can be passed as a first arg, with the following option:
+ 
+  * `:keyify` - specify whether header/column names should be turned into keywords (deafults to true)"
   ([rows]
    (mappify {} rows))
   ([{:keys [keyify] :or {keyify true} :as opts}
     rows]
    (let [header (first rows)
          header (if keyify (mapv keyword header) header)]
-     (map (partial mappify-row header) (rest rows)))))
+     (map (partial impl/mappify-row header) (rest rows)))))
 
 ;; Here's an example to whet our whistle:
 ;;
