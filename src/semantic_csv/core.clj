@@ -1,4 +1,4 @@
-;; # Higher level CSV parsing functionality
+;; # Higher level CSV parsing/processing functionality
 ;;
 ;; The two most popular CSV parsing libraries for Clojure presently - `clojure/data.csv` and `clojure-csv` -
 ;; concern themselves only wtih the _syntax_ of CSV;
@@ -19,9 +19,8 @@
 ;;
 ;; Semantic CSV is structured around a number of composable processing functions for transforming data as it
 ;; comes out of or goes into a CSV file.
-;; This leaves basic parsing/formatting up to you and whatever tools you like to use, as long as those tools
-;; return/take sequences of vectors.
-;; This reflects a nice decoupling of grammar and semantics, maximizing interoperability.
+;; This leaves room for you to use whatever parsing/formatting tools you like, reflecting a nice decoupling
+;; of grammar and semantics.
 ;; However, a couple of convenience functions are also provided which wrap these individual steps
 ;; in an opinionated but customizable manner, helping you move quickly while prototyping or working at the
 ;; REPL.
@@ -60,6 +59,7 @@
 ;; You're welcome.
 
 
+;; <br/>
 ;; ## mappify
 
 (defn mappify
@@ -91,6 +91,7 @@
 ;; We can solve this with the following function:
 
 
+;; <br/>
 ;; ## remove-comments
 
 (defn remove-comments
@@ -127,6 +128,7 @@
 ;; rather avoid.]
 
 
+;; <br/>
 ;; ## cast-with
 
 (defn cast-with
@@ -148,27 +150,6 @@
               cast-fns)))
         (?>> ignore-first (cons (first rows))))))
 
-
-(defn cast-all
-  "Casts _all_ row values with the given function. Optional `opts` arg accepts keyword args:
-
-  * `:only` - Only run `cast-fn` on these columns
-  * `:ignore-first` - As in `cast-with`, you can optionally ignore the first row"
-  ([cast-fn rows]
-   (map (partial impl/cast-row cast-fn) rows))
-  ([cast-fn {:keys [ignore-first only] :as opts} rows]
-   (case (mapv boolean [ignore-first only])
-     [false false]
-       (cast-all cast-fn rows)
-     [true false]
-       (->> rows
-            (drop 1)
-            (cast-all cast-fn rows)
-            (cons (first rows)))
-     (let [cast-fns (into {} (map vector only cast-fn))]
-       (cast-with cast-fns {:ignore-first ignore-first} rows)))))
-
-
 ;; Note that we have a couple of numeric columns in the play data we've been dealing with.
 ;; Let's try casting them as such using `cast-with`:
 ;;
@@ -189,11 +170,35 @@
 ;; So map or vector rows are fine, but lists or lazy sequences would not be.
 
 
+;; <br/>
+;; ## cast-all
+
+(defn cast-all
+  "Casts _multiple_ column values with the given function. Optional `opts` map can be used to specify:
+
+  * `:only` - Only run `cast-fn` on these columns (default is to run on all columns)
+  * `:ignore-first` - As in `cast-with`, you can optionally ignore the first row"
+  ([cast-fn rows]
+   (map (partial impl/cast-row cast-fn) rows))
+  ([cast-fn {:keys [ignore-first only] :as opts} rows]
+   (case (mapv boolean [ignore-first only])
+     [false false]
+       (cast-all cast-fn rows)
+     [true false]
+       (->> rows
+            (drop 1)
+            (cast-all cast-fn rows)
+            (cons (first rows)))
+     (let [cast-fns (into {} (map vector only cast-fn))]
+       (cast-with cast-fns {:ignore-first ignore-first} rows)))))
+
+
+;; <br/>
 ;; ## process
 
 (defn process
   "This function wraps together all of the various input processing capabilities into one, with options
-  controlled by an opts hash with opinionated defaults:
+  controlled by an `opts` hash with opinionated defaults:
 
   * `:header` - bool; consume the first row as a header?
   * `:comment-re` - specify a regular expression to use for commenting out lines, or something falsey
@@ -224,6 +229,7 @@
 ;;                  :cast-fns {:this #(Integer/parseInt %)})))
 
 
+;; <br/>
 ;; ## parse-and-process
 
 (defn parse-and-process
@@ -244,9 +250,10 @@
 ;;                            :cast-fns {:this #(Integer/parseInt %)})))
 
 
-;; ## slurp-and-process
+;; <br/>
+;; ## slurp-csv
 
-(defn slurp-and-process
+(defn slurp-csv
   "This convenience function let's you `parse-and-process` csv data given a csv filename. Note that it is _not_
   lazy, and must read in all data so the file handle cna be closed."
   [csv-filename & {:as opts}]
@@ -257,14 +264,12 @@
 
 ;; For the ultimate in _programmer_ laziness:
 ;;
-;;     (slurp-and-process "test/test.csv"
+;;     (slurp-csv "test/test.csv"
 ;;                        :cast-fns {:this #(Integer/parseInt %)})
 
 
 ;; <br/>
-
-
-;; # Some parsing functions for your convenience
+;; # Some casting functions for your convenience
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; These functions can be imported and used in your `:cast-fns` specification
@@ -279,10 +284,11 @@
   [string]
   (Float/parseFloat string))
 
-;;     (slurp-and-process "test/test.csv"
+;;     (slurp-csv "test/test.csv"
 ;;                        :cast-fns {:this ->int})
 
 
+;; <br/>
 ;; # Output processing functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -297,6 +303,8 @@
 ;; One of the first things we'll need is a function that takes a sequence of maps and turns it into a sequence
 ;; of vectors since this is what most of our csv writing/formatting libraries will want.
 
+
+;; <br/>
 ;; ## vectorize
 
 (defn vectorize
@@ -347,6 +355,7 @@
 ;;      ["y" "x"])
 
 
+;; <br/>
 ;; ## format-with
 
 (defn format-with
@@ -367,14 +376,16 @@
 ;;      ["val-x" "y"])
 
 
-;; ## format-all-with
+;; <br/>
+;; ## format-with
 
-(defn format-all-with
+(defn format-with
   "Just an alias for `cast-all`."
   [& args]
   (apply cast-all args))
 
 
+;; <br/>
 ;; ## batch
 
 (defn batch
@@ -393,6 +404,7 @@
 ;; _that_ through to something that writes off the chunks lazily.
 
 
+;; <br/>
 ;; ## spit-csv
 
 (defn spit-csv
@@ -427,7 +439,7 @@
                            :prepend-header prepend-header}))
           (?>> formatters (format-with formatters))
           ; For save measure
-          (format-all-with str)
+          (format-with str)
           (batch batch-size)
           (pc/<- (csv/write-csv writer-opts))
           (reduce
@@ -436,13 +448,14 @@
               w)
             file)))))
 
-;; Like `slurp-and-process`, this is a convenience function which wraps together a set of opinionated options
+;; Like `slurp-csv`, this is a convenience function which wraps together a set of opinionated options
 ;; for writing data to the specified file handle or filename.
 ;; Note that since we use `clojure-csv` here, we offer a `:batch` option that lets you format and write small
 ;; batches of rows out at a time, to avoid contructing a massive string representation of all the data in the
 ;; case of bigger data sets.
 
 
+;; <br/>
 ;; # One last example showing everything together
 ;;
 ;; Let's see how Semantic CSV in the context of a little data pipeline.
@@ -479,7 +492,7 @@
 ;;       (->>
 ;;         (csv/parse-csv in-file)
 ;;         ...
-;;         (format-all-with str)
+;;         (format-with str)
 ;;         (batch 1)
 ;;         (map csv/write-csv)
 ;;         (reduce
