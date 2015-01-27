@@ -1,7 +1,5 @@
 # Semantic CSV
 
-[![Clojars Project](http://clojars.org/semantic-csv/latest-version.svg)](http://clojars.org/semantic-csv)
-
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/metasoarous/semantic-csv?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 **A Clojure library with higher level CSV parsing/processing functionality.**
@@ -34,7 +32,9 @@ REPL.
 
 ## Installation
 
-Assuming you're using Leiningen, just add `[semantic-csv "0.1.0-alpha1"]` to your dependencies.
+Assuming you're using Leiningen, just add the following to your dependencies:
+
+[![Clojars Project](http://clojars.org/semantic-csv/latest-version.svg)](http://clojars.org/semantic-csv)
 
 If you'd like to try the latest version (perhaps useful while things are changing frequently), you may want to try using [`lein-git-deps`](https://github.com/tobyhede/lein-git-deps).
 You can do this by adding the following to your `project.clj`:
