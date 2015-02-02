@@ -6,13 +6,28 @@
 
 (deftest mappify-test
   (let [data [["this" "that"]
-              ["x" "y"]]]
+              ["x" "y"]
+              ["# some comment"]]]
     (testing "mappify should work"
       (is (= (first (mappify data))
              {:this "x" :that "y"})))
     (testing "mappify should let you avoid keyifying"
       (is (= (first (mappify {:keyify false} data))
-             {"this" "x" "that" "y"})))))
+             {"this" "x" "that" "y"})))
+    (testing "mappify should not regard comments"
+      (is (= (last (mappify data))
+             {:this "# some comment"})))))
+
+
+(deftest remove-comments-test
+  (let [data [["# a comment"]
+              ["// another comment"]]]
+    (testing "remove-comments should remove #-designated comments by default"
+      (is (= (remove-comments data)
+             [["// another comment"]])))
+    (testing "remove-comments should take an optional comment designator"
+      (is (= (remove-comments #"^//" data)
+             [["# a comment"]])))))
 
 
 (deftest casting-test
@@ -31,6 +46,3 @@
                   (cast-with {0 ->int})
                   second)
              [2 "that"])))))
-
-
-
