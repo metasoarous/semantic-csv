@@ -27,22 +27,22 @@
              [["// another comment"]])))
     (testing "remove-comments should take an optional comment designator"
       (is (= (remove-comments #"^//" data)
-             [["# a comment"]]))))
+             [["# a comment"]])))))
 
 
-  (deftest casting-test
-    (let [data [["this" "that"]
-                ["1" "y"]]]
-      (testing "should work with mappify"
-        (is (= (->> data
-                    mappify
-                    (cast-with {:this ->int})
-                    first)
-               {:this 1 :that "y"}))))
-    (let [data [["1" "this"]
-                ["2" "that"]]]
-      (testing "should work without mappify"
-        (is (= (->> data
-                    (cast-with {0 ->int})
-                    second)
-               [2 "that"]))))))
+(deftest casting-test
+  (let [data [["this" "that"]
+              ["1" "y"]]]
+    (testing "should work with mappify"
+      (is (= (->> data
+                  mappify
+                  (cast-with {:this ->int})
+                  first)
+             {:this 1 :that "y"}))))
+  (let [data [["1" "this"]
+              ["2" "that"]]]
+    (testing "should work without mappify"
+      (is (= (->> data
+                  (cast-with {0 ->int})
+                  second)
+             [2 "that"])))))
