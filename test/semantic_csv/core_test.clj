@@ -45,4 +45,8 @@
       (is (= (->> data
                   (cast-with {0 ->int})
                   second)
-             [2 "that"])))))
+             [2 "that"])))
+    (testing "should work with :ignore-first"
+      (is (= (->> data
+                  (cast-with {0 ->int} {:ignore-first true}))
+             [["1" "this"] [2 "that"]])))))
