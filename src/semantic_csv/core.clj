@@ -168,6 +168,10 @@
 ;;
 ;; Note from the implementation here that each row need only be associative.
 ;; So map or vector rows are fine, but lists or lazy sequences would not be.
+;; In particular, if you’ve imported data without a header with the `:header`
+;; option set to `false` then the columns can be keyed by their zero-based
+;; index, for instance `(cast-with {0 #(Integer/parseInt %) 1 #(Double/parseDouble %)} rows)`
+;; will parse the first column as integers and the second as doubles.
 
 
 ;; <br/>
