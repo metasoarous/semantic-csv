@@ -284,6 +284,11 @@
   [string]
   (Float/parseFloat string))
 
+(defn ->double
+  "Translate into double"
+  [string]
+  (Double/parseDouble string))
+
 ;;     (slurp-csv "test/test.csv"
 ;;                :cast-fns {:this ->int})
 
