@@ -37,9 +37,9 @@
 
 
 ;; To start, require this namespace, `clojure.java.io`, and your favorite CSV parser (e.g.,
-;; [clojure-csv](https://github.com/davidsantiago/clojure-csv) or 
+;; [clojure-csv](https://github.com/davidsantiago/clojure-csv) or
 ;; [clojure/data.csv](https://github.com/clojure/data.csv); we'll be using the former).
-;; 
+;;
 ;;     (require '[semantic-csv.core :refer :all]
 ;;              '[clojure-csv.core :as csv]
 ;;              '[clojure.java.io :as io])
@@ -65,7 +65,7 @@
 (defn mappify
   "Comsumes the first item as a header, and returns a seq of the remaining items as a maps with the header
   values as keys. Note that an optional `opts` map can be passed as a first arg, with the following option:
- 
+
   * `:keyify` - specify whether header/column names should be turned into keywords (deafults to true)"
   ([rows]
    (mappify {} rows))
@@ -95,7 +95,7 @@
 ;; ## remove-comments
 
 (defn remove-comments
-  "Removes rows which start with a comment character (by default, `#`). Operates by checking the regular 
+  "Removes rows which start with a comment character (by default, `#`). Operates by checking the regular
   expression against the first argument of every row in the collection."
   ([rows]
    (remove-comments #"^\#" rows))
@@ -134,7 +134,7 @@
 (defn cast-with
   "Casts the vals of each row according to `cast-fns`, which maps `column-name -> casting-fn`. An optional
   `opts` map can be used to specify:
-  
+
   * `:ignore-first` - Ignore the first row in `rows`; Useful for preserving header rows"
   ([cast-fns rows]
    (cast-with cast-fns {} rows))
@@ -195,6 +195,26 @@
             (cons (first rows)))
      (let [cast-fns (into {} (map vector only cast-fn))]
        (cast-with cast-fns {:ignore-first ignore-first} rows)))))
+
+
+;; <br />
+;; ## sniff-cast
+
+(defn sniff-cast
+  "This function reads in `:sniff-lines` number of lines, and tries to guess at the types
+  of the individual columns. At present, the only types it tries to sniff out are
+  numeric values, and in particular will try to cast values as either doubles or ints,
+  and will choose whichever is more specific (that is, if even one of the `N` values read in
+    is a double, it will read the whole column in as such, but if all match ints, it casts them as ints).
+    Options are:
+
+    * `:sniff-lines` - Number of lines to read in order to make a deduction
+    * `:fallback` - Specify a function of `(colname, rawvalue)` to be called if an error occurs in parsing.
+    The return value will be taken as the casted value. The default behaviour is to simply return `nil`.
+    * `:ignore-first` - As in `cast-with`, you can optionally ignore the first row"
+  [rows]
+  ;; code goes here
+  rows)
 
 
 ;; <br/>
@@ -492,5 +512,3 @@
 ;; Hope you find this library useful.
 ;; If you have questions or comments please either [submit an issue](https://github.com/metasoarous/semantic-csv/issues)
 ;; or join us in the [dedicated chat room](https://gitter.im/metasoarous/semantic-csv).
-
-
