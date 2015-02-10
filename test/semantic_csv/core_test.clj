@@ -50,3 +50,14 @@
       (is (= (->> data
                   (cast-with {0 ->int} {:ignore-first true}))
              [["1" "this"] [2 "that"]])))))
+
+
+(deftest sniff-cast-test
+  (let [data [["1" "1.0" "1"]
+              ["2" "2.0" "2"]
+              ["3" "3" "3.0"]]]
+    (testing "should sniff-cast the integer column"
+      (is (= (->> data
+                  (sniff-cast)
+                  (map first))
+             [1 2 3])))))
