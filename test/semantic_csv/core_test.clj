@@ -30,7 +30,7 @@
              [["# a comment"]])))))
 
 
-(deftest casting-test
+(deftest cast-with-test
   (let [data [["this" "that"]
               ["1" "y"]]]
     (testing "should work with mappify"
@@ -50,3 +50,24 @@
       (is (= (->> data
                   (cast-with {0 ->int} {:ignore-first true}))
              [["1" "this"] [2 "that"]])))))
+
+
+(deftest cast-all-test
+  (let [data [["this" "that"]
+              ["1" "2"]]]
+    (testing "should work with mappify"
+      (is (= (->> data
+                  mappify
+                  (cast-all ->int)
+                  first)
+             {:this 1 :that 2})))
+    (testing "should work with :ignore-first"
+      (is (= (->> data
+                  (cast-all ->int {:ignore-first true}))
+             [["this" "that"] [1 2]])))
+    (testing "should work with :only"
+      (is (= (->> data
+                  mappify
+                  (cast-all ->int {:only :that})
+                  first)
+             {:this "1" :that 2})))))
