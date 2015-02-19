@@ -85,14 +85,14 @@
           x "4.555"]
       (is (= (->int n) 3443))
       (is (= (->long n) 3443))
-      (is (= (->float x) 4.555))
+      (is (= (->float x) (float 4.555)))
       (is (= (->double x) 4.555))))
   (testing "with numeric inputs"
-    (for [x [3443 4.555]
-          f [->float ->double]]
-      (is (= (f x) (double x))))
-    (for [x [3443 4.555]
-          f [->int ->long]]
+    (doseq [x [3443 4.555]]
+      (is (= (->double x) (double x)))
+      (is (= (->float x) (float x))))
+    (doseq [x [3443 4.555]
+            f [->int ->long]]
       (is (= (f x) (long x))))))
 
 

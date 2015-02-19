@@ -311,23 +311,31 @@
 
 (defn ->int
   "Translate to int from string or other numeric"
-  [string]
-  (Integer/parseInt string))
+  [v]
+  (if (string? v)
+    (int (Double/parseDouble v))
+    (int v)))
 
 (defn ->long
   "Translating to long from string or other numeric"
-  [string]
-  (Long/parseLong string))
+  [v]
+  (if (string? v)
+    (long (Double/parseDouble v))
+    (long v)))
 
 (defn ->float
   "Translate to float from string or other numeric"
-  [string]
-  (Float/parseFloat string))
+  [v]
+  (if (string? v)
+    (Float/parseFloat v)
+    (float v)))
 
 (defn ->double
   "Translate to double from string or other numeric"
-  [string]
-  (Double/parseDouble string))
+  [v]
+  (if (string? v)
+    (Double/parseDouble v)
+    (double v)))
 
 ;;     (slurp-csv "test/test.csv"
 ;;                :cast-fns {:this ->int})
