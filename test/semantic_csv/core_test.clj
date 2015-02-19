@@ -65,9 +65,17 @@
       (is (= (->> data
                   (cast-all ->int {:ignore-first true}))
              [["this" "that"] [1 2]])))
-    (testing "should work with :only"
+    (testing "should work with :only <seq>"
+      (is (= (->> data
+                  mappify
+                  (cast-all ->int {:only [:that]})
+                  first)
+             {:this "1" :that 2})))
+    (testing "should work with :only <colname>"
       (is (= (->> data
                   mappify
                   (cast-all ->int {:only :that})
                   first)
              {:this "1" :that 2})))))
+
+
