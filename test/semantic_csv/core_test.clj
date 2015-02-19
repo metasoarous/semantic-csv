@@ -79,3 +79,20 @@
              {:this "1" :that 2})))))
 
 
+(deftest casting-function-helpers-test
+  (testing "with string inputs"
+    (let [n "3443"
+          x "4.555"]
+      (is (= (->int n) 3443))
+      (is (= (->long n) 3443))
+      (is (= (->float x) 4.555))
+      (is (= (->double x) 4.555))))
+  (testing "with numeric inputs"
+    (for [x [3443 4.555]
+          f [->float ->double]]
+      (is (= (f x) (double x))))
+    (for [x [3443 4.555]
+          f [->int ->long]]
+      (is (= (f x) (long x))))))
+
+
