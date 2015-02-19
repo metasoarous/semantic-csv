@@ -197,6 +197,36 @@
        (cast-with cast-fns {:ignore-first ignore-first} rows)))))
 
 
+;; <br />
+;; ## except-first
+
+(defmacro except-first
+  "Takes any number of forms and a final `data` argument. Threads the data through the forms, as though
+  with `->>`, except that the first item in `data` remains unaltered. This is intended to operate within
+  the context of an _actual_ `->>` threading macro for processing, where you might want to leave a header
+  column unmodified by your processing functions."
+  [& forms-and-data]
+  (let [data (last forms-and-data)
+        forms (butlast forms-and-data)]
+    `((fn [rows#]
+        (let [first-row# (first rows#)
+              rest-rows# (rest rows#)]
+          (cons first-row# (->> rest-rows# ~@forms))))
+        ~data)))
+
+;; This macro gives us as way to process every row _except_ for the first row, which might represent header
+;; information.
+;; For example:
+;;
+;;     => (->> [["a" "b" "c"] [1 2 3] [4 5 6]]
+;;             (except-first (cast-all inc)
+;;                           (cast-all #(/ % 2))))
+;;     (["a" "b" "c"] [1 3/2 2] [5/2 3 7/2])
+;;
+;; This could be useful if you know you want to do some processing on all non-header rows, but don't really
+;; need to know which columns are which to do this, and still want to keep the header row
+
+
 ;; <br/>
 ;; ## process
 
@@ -270,6 +300,7 @@
 ;;
 ;;     (slurp-csv "test/test.csv"
 ;;                :cast-fns {:this #(Integer/parseInt %)})
+
 
 
 ;; <br/>
