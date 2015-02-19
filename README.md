@@ -109,6 +109,12 @@ And again, as with the input processing functions, here we also provide a quick 
 And there you have it.
 
 
+## Contributing
+
+Feel free to submit a pull request (rebased off of origin/master locally first, please).
+If you're looking for things to help with, please take a look at the [issues](https://github.com/metasoarous/semantic-csv/issues) page.
+
+
 ## License
 
 Copyright © 2014 Christopher Small
