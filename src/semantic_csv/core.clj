@@ -310,17 +310,22 @@
 ;; These functions can be imported and used in your `:cast-fns` specification
 
 (defn ->int
-  "Translating string into integers"
+  "Translate to int from string or other numeric"
   [string]
   (Integer/parseInt string))
 
+(defn ->long
+  "Translating to long from string or other numeric"
+  [string]
+  (Long/parseLong string))
+
 (defn ->float
-  "Translate into float"
+  "Translate to float from string or other numeric"
   [string]
   (Float/parseFloat string))
 
 (defn ->double
-  "Translate into double"
+  "Translate to double from string or other numeric"
   [string]
   (Double/parseDouble string))
 
