@@ -66,7 +66,8 @@
   "Comsumes the first item as a header, and returns a seq of the remaining items as a maps with the header
   values as keys. Note that an optional `opts` map can be passed as a first arg, with the following option:
  
-  * `:keyify` - specify whether header/column names should be turned into keywords (deafults to true)"
+  * `:keyify` - specify whether header/column names should be turned into keywords (deafults to true)
+  * `:header` - specify the header to use for map keys, preventing first row of data from bein gconsumed as header"
   ([rows]
    (mappify {} rows))
   ([{:keys [keyify header] :or {keyify true} :as opts}
