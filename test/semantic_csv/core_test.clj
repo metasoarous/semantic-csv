@@ -96,3 +96,27 @@
       (is (= (f x) (long x))))))
 
 
+(deftest process-test
+  (testing "should generally work"
+    (let [parsed-data [["this" "that" "more"]
+                       ["a" "b" "c"]
+                       ["d" "e" "f"]]]
+      (testing "with defaults"
+        (is (= (first (process parsed-data))
+               {:this "a" :that "b" :more "c"}))
+        (is (= (second (process parsed-data))
+               {:this "d" :that "e" :more "f"})))
+      (testing "with :header false"
+        (is (= (first (process {:header false} parsed-data))
+               ["this" "that" "more"]))
+        (is (= (second (process {:header false} parsed-data))
+               ["a" "b" "c"])))
+      (testing "with defaults"
+        (is (= (first (process {:cast-fns {:this #(str % "andstuff")}}
+                               parsed-data))
+               {:this "aandstuff" :that "b" :more "c"}))
+        (is (= (second (process {:cast-fns {:this #(str % "andstuff")}}
+                                parsed-data))
+               {:this "dandstuff" :that "e" :more "f"}))))))
+
+
