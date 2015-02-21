@@ -120,3 +120,20 @@
                {:this "dandstuff" :that "e" :more "f"}))))))
 
 
+(deftest except-first-test
+  (let [parsed-data [["this" "that" "more"]
+                     ["a" "b" "c"]
+                     ["d" "e" "f"]]]
+    (testing "Should leave first row unchanged"
+      (is (= (->> parsed-data
+                  (except-first (cast-with {0 (partial str "X")}))
+                  (first))
+             ["this" "that" "more"])))
+    (testing "Should generally work on remaining rows"
+      (is (= (->> parsed-data
+                  (except-first (cast-with {0 (partial str "X")})
+                                (remove #(= (first %) "Xa")))
+                  (second))
+             ["Xd" "e" "f"])))))
+
+
