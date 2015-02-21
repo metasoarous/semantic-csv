@@ -69,11 +69,17 @@
   * `:keyify` - specify whether header/column names should be turned into keywords (deafults to true)"
   ([rows]
    (mappify {} rows))
-  ([{:keys [keyify] :or {keyify true} :as opts}
+  ([{:keys [keyify header] :or {keyify true} :as opts}
     rows]
-   (let [header (first rows)
+   (let [consume-header (not header)
+         header (if header
+                  header
+                  (first rows))
          header (if keyify (mapv keyword header) header)]
-     (map (partial impl/mappify-row header) (rest rows)))))
+     (map (partial impl/mappify-row header)
+          (if consume-header
+            (rest rows)
+            rows)))))
 
 ;; Here's an example to whet our whistle:
 ;;
