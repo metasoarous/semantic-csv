@@ -193,7 +193,8 @@
             (drop 1)
             (cast-all cast-fn rows)
             (cons (first rows)))
-     (let [cast-fns (into {} (map vector only cast-fn))]
+     (let [only (if (coll? only) only [only])
+           cast-fns (into {} (map vector only (repeat cast-fn)))]
        (cast-with cast-fns {:ignore-first ignore-first} rows)))))
 
 
