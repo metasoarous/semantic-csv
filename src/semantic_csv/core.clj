@@ -135,12 +135,12 @@
   "Casts the vals of each row according to `cast-fns`, which maps `column-name -> casting-fn`. An optional
   `opts` map can be used to specify:
   
-  * `:ignore-first` - Ignore the first row in `rows`; Useful for preserving header rows"
+  * `:except-first` - Ignore the first row in `rows`; Useful for preserving header rows"
   ([cast-fns rows]
    (cast-with cast-fns {} rows))
-  ([cast-fns {:keys [ignore-first] :as opts} rows]
+  ([cast-fns {:keys [except-first] :as opts} rows]
    (->> rows
-        (?>> ignore-first (drop 1))
+        (?>> except-first (drop 1))
         (map
           (fn [row]
             (reduce
@@ -148,7 +148,7 @@
                 (update-in row [col] update-fn))
               row
               cast-fns)))
-        (?>> ignore-first (cons (first rows))))))
+        (?>> except-first (cons (first rows))))))
 
 ;; Note that we have a couple of numeric columns in the play data we've been dealing with.
 ;; Let's try casting them as such using `cast-with`:
@@ -181,11 +181,11 @@
   "Casts _multiple_ column values with the given function. Optional `opts` map can be used to specify:
 
   * `:only` - Only run `cast-fn` on these columns (default is to run on all columns)
-  * `:ignore-first` - As in `cast-with`, you can optionally ignore the first row"
+  * `:except-first` - As in `cast-with`, you can optionally ignore the first row"
   ([cast-fn rows]
    (map (partial impl/cast-row cast-fn) rows))
-  ([cast-fn {:keys [ignore-first only] :as opts} rows]
-   (case (mapv boolean [ignore-first only])
+  ([cast-fn {:keys [except-first only] :as opts} rows]
+   (case (mapv boolean [except-first only])
      [false false]
        (cast-all cast-fn rows)
      [true false]
@@ -195,7 +195,7 @@
             (cons (first rows)))
      (let [only (if (coll? only) only [only])
            cast-fns (into {} (map vector only (repeat cast-fn)))]
-       (cast-with cast-fns {:ignore-first ignore-first} rows)))))
+       (cast-with cast-fns {:except-first except-first} rows)))))
 
 
 ;; <br />

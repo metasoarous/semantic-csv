@@ -46,9 +46,9 @@
                   (cast-with {0 ->int})
                   second)
              [2 "that"])))
-    (testing "should work with :ignore-first"
+    (testing "should work with :except-first"
       (is (= (->> data
-                  (cast-with {0 ->int} {:ignore-first true}))
+                  (cast-with {0 ->int} {:except-first true}))
              [["1" "this"] [2 "that"]])))))
 
 
@@ -61,9 +61,9 @@
                   (cast-all ->int)
                   first)
              {:this 1 :that 2})))
-    (testing "should work with :ignore-first"
+    (testing "should work with :except-first"
       (is (= (->> data
-                  (cast-all ->int {:ignore-first true}))
+                  (cast-all ->int {:except-first true}))
              [["this" "that"] [1 2]])))
     (testing "should work with :only <seq>"
       (is (= (->> data
