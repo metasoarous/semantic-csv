@@ -186,3 +186,13 @@
                ["x" "y"]))))))
 
 
+(deftest batch-test
+  (let [xs (for [i (range 20)] [i (* i 2)])]
+    (testing "makes the right number of batches"
+      (is (= (count (batch 7 xs))
+             3)))
+    (testing "doesn't put more things than it should in final batch"
+      (is (= (->> xs (batch 7) last count)
+             6)))))
+
+
