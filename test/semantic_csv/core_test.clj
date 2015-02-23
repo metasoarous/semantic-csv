@@ -130,11 +130,14 @@
                {:this "a" :that "b" :more "c"}))
         (is (= (second (process parsed-data))
                {:this "d" :that "e" :more "f"})))
-      (testing "with :header false"
-        (is (= (first (process {:header false} parsed-data))
+      (testing "with :mappify false"
+        (is (= (first (process {:mappify false} parsed-data))
                ["this" "that" "more"]))
-        (is (= (second (process {:header false} parsed-data))
+        (is (= (second (process {:mappify false} parsed-data))
                ["a" "b" "c"])))
+      (testing "with :header spec"
+        (is (= (first (process {:header ["x" "y" "z"]} parsed-data))
+               {:x "this" :y "that" :z "more"})))
       (testing "with defaults"
         (is (= (first (process {:cast-fns {:this #(str % "andstuff")}}
                                parsed-data))

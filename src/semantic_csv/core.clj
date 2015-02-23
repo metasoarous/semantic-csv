@@ -222,22 +222,23 @@
   "This function wraps together all of the various input processing capabilities into one, with options
   controlled by an `opts` hash with opinionated defaults:
 
-  * `:header` - bool; consume the first row as a header?
+  * `:mappify` - bool; transform rows from vectors into maps using `mappify`?
+  * `:header` - specify header to be used in mappify; as per `mappify`, first row will not be consumed as header
   * `:comment-re` - specify a regular expression to use for commenting out lines, or something falsey
      if filtering out comment lines is not desired.
   * `:remove-empty` - also remove empty rows? Defaults to true.
   * `:cast-fns` - optional map of `colname | index -> cast-fn`; row maps will have the values as output by the
      assigned `cast-fn`."
-  ([{:keys [comment-re header remove-empty cast-fns]
+  ([{:keys [comment-re mappify header remove-empty cast-fns]
      :or   {comment-re   #"^\#"
-            header       true
+            mappify       true
             remove-empty true
             cast-fns     {}}
      :as opts}
     rows]
    (->> rows
         (?>> comment-re (remove-comments comment-re))
-        (?>> header (mappify))
+        (?>> mappify (semantic-csv.core/mappify {:header header}))
         (?>> cast-fns (cast-with cast-fns))))
   ; Use all defaults
   ([rows]
