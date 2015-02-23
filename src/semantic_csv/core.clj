@@ -139,17 +139,20 @@
 ;; ## cast-with
 
 (defn cast-with
-  "Casts the vals of each row according to `cast-fns`, which maps `column-name -> casting-fn`. An optional
-  `opts` map can be used to specify:
+  "Casts the vals of each row according to `cast-fns`, which must either be a map of
+  `column-name -> casting-fn` or a single casting function to be applied towards all columns.
+  Additionally, an `opts` map can be used to specify:
   
-  * `:except-first` - Ignore the first row in `rows`; Useful for preserving header rows
-  * `:exception-handler` - If cast-fn "
+  * `:except-first` - Ignore the first row in `rows`; Useful for preserving header rows.
+  * `:exception-handler` - If cast-fn raises an excpetion, this function will be called with args
+    `colname, value`. The result of the exception handler will be used as the parse value.
+  * `:only` - Only the column(s) specified will be casted."
   ([cast-fns rows]
    (cast-with cast-fns {} rows))
-  ([cast-fns {:keys [except-first exception-handler] :as opts} rows]
+  ([cast-fns {:keys [except-first exception-handler only] :as opts} rows]
    (->> rows
         (?>> except-first (drop 1))
-        (map #(impl/cast-row cast-fns % :exception-handler exception-handler))
+        (map #(impl/cast-row cast-fns % :only only :exception-handler exception-handler))
         (?>> except-first (cons (first rows))))))
 
 ;; Note that we have a couple of numeric columns in the play data we've been dealing with.
@@ -176,30 +179,6 @@
 ;; will parse the first column as integers and the second as doubles.
 
 
-;; <br/>
-;; ## cast-all
-
-(defn cast-all
-  "Casts _multiple_ column values with the given function. Optional `opts` map can be used to specify:
-
-  * `:only` - Only run `cast-fn` on these columns (default is to run on all columns)
-  * `:except-first` - As in `cast-with`, you can optionally ignore the first row"
-  ([cast-fn rows]
-   (map (partial impl/cast-row cast-fn) rows))
-  ([cast-fn {:keys [except-first only] :as opts} rows]
-   (case (mapv boolean [except-first only])
-     [false false]
-       (cast-all cast-fn rows)
-     [true false]
-       (->> rows
-            (drop 1)
-            (cast-all cast-fn rows)
-            (cons (first rows)))
-     (let [only (if (coll? only) only [only])
-           cast-fns (into {} (map vector only (repeat cast-fn)))]
-       (cast-with cast-fns {:except-first except-first} rows)))))
-
-
 ;; <br />
 ;; ## except-first
 
@@ -222,8 +201,8 @@
 ;; For example:
 ;;
 ;;     => (->> [["a" "b" "c"] [1 2 3] [4 5 6]]
-;;             (except-first (cast-all inc)
-;;                           (cast-all #(/ % 2))))
+;;             (except-first (cast-with inc)
+;;                           (cast-with #(/ % 2))))
 ;;     (["a" "b" "c"] [1 3/2 2] [5/2 3 7/2])
 ;;
 ;; This could be useful if you know you want to do some processing on all non-header rows, but don't really
@@ -356,7 +335,7 @@
 ;; But as with the input processing functions, we offer some higher level, opinionated but configurable functions
 ;; which automate some of this for you.
 ;;
-;; We've already looked at `cast-with` and `cast-all`, which can be useful as output as well as input
+;; We've already looked at `cast-with`, which can be useful as output as well as input
 ;; processing functions.
 ;; Another important function we'll need is one that takes a sequence of maps and turns it into a sequence
 ;; of vectors since this is what most of our csv writing/formatting libraries will want.
@@ -469,7 +448,7 @@
                (vectorize {:header header
                            :prepend-header prepend-header}))
           ; For save measure
-          (cast-all str)
+          (cast-with str)
           (batch batch-size)
           (map #(impl/apply-kwargs csv/write-csv % writer-opts))
           (reduce
@@ -522,7 +501,7 @@
 ;;       (->>
 ;;         (csv/parse-csv in-file)
 ;;         ...
-;;         (cast-all str)
+;;         (cast-with str)
 ;;         (batch 1)
 ;;         (map csv/write-csv)
 ;;         (reduce

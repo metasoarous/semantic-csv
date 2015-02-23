@@ -76,23 +76,23 @@
     (testing "should work with mappify"
       (is (= (->> data
                   mappify
-                  (cast-all ->int)
+                  (cast-with ->int)
                   first)
              {:this 1 :that 2})))
     (testing "should work with :except-first"
       (is (= (->> data
-                  (cast-all ->int {:except-first true}))
+                  (cast-with ->int {:except-first true}))
              [["this" "that"] [1 2]])))
     (testing "should work with :only <seq>"
       (is (= (->> data
                   mappify
-                  (cast-all ->int {:only [:that]})
+                  (cast-with ->int {:only [:that]})
                   first)
              {:this "1" :that 2})))
     (testing "should work with :only <colname>"
       (is (= (->> data
                   mappify
-                  (cast-all ->int {:only :that})
+                  (cast-with ->int {:only :that})
                   first)
              {:this "1" :that 2})))))
 
