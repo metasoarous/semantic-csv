@@ -301,28 +301,28 @@
   "Translate to int from string or other numeric"
   [v]
   (if (string? v)
-    (int (Double/parseDouble v))
+    (-> v clojure.string/trim Double/parseDouble int)
     (int v)))
 
 (defn ->long
   "Translating to long from string or other numeric"
   [v]
   (if (string? v)
-    (long (Double/parseDouble v))
+    (-> v clojure.string/trim Double/parseDouble long)
     (long v)))
 
 (defn ->float
   "Translate to float from string or other numeric"
   [v]
   (if (string? v)
-    (Float/parseFloat v)
+    (-> v clojure.string/trim Float/parseFloat)
     (float v)))
 
 (defn ->double
   "Translate to double from string or other numeric"
   [v]
   (if (string? v)
-    (Double/parseDouble v)
+    (-> v clojure.string/trim Double/parseDouble)
     (double v)))
 
 ;;     (slurp-csv "test/test.csv"

@@ -111,7 +111,13 @@
       (is (= (->float x) (float x))))
     (doseq [x [3443 4.555]
             f [->int ->long]]
-      (is (= (f x) (long x))))))
+      (is (= (f x) (long x)))))
+  (testing "with string inputs containing spaces on the ends"
+    (doseq [f [->int ->long ->float ->double]]
+      (is (f " 3454 "))))
+  (testing "with non integer values getting cast to integers"
+    (doseq [f [->int ->long]]
+      (is (f "35.54")))))
 
 
 (deftest process-test
