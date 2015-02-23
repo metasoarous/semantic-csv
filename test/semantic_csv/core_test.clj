@@ -167,3 +167,22 @@
              ["Xd" "e" "f"])))))
 
 
+(deftest vectorize-test
+  (let [data [{:this "a" :that "b"}
+              {:this "x" :that "y"}]]
+    (testing "with no opts"
+      (is (= (vectorize data)
+             '(["this" "that"]
+               ["a" "b"]
+               ["x" "y"]))))
+    (testing "with header opts"
+      (is (= (vectorize {:header [:that :this]} data)
+             '(["that" "this"]
+               ["b" "a"]
+               ["y" "x"]))))
+    (testing "with :prepend-header false"
+      (is (= (vectorize {:prepend-header false} data)
+             '(["a" "b"]
+               ["x" "y"]))))))
+
+
