@@ -169,13 +169,25 @@
 ;;     ({:this 1, :that "2", :more "stuff"}
 ;;      {:this 2, :that "3", :more "other yeah"})
 ;;
-;; Lovely :-)
+;; Alternatively, if we want to cast multiple columns using a single function, we can do so
+;; by passing a single casting function as the first argument.
+;; 
+;;     => (with-open [in-file (io/reader "test/test.csv")]
+;;          (->>
+;;            (csv/parse-csv in-file)
+;;            remove-comments
+;;            mappify
+;;            (cast-with #(Integer/parseInt %) {:only [:this :that]})
+;;            doall))
 ;;
-;; Note from the implementation here that each row need only be associative.
-;; So map or vector rows are fine, but lists or lazy sequences would not be.
-;; In particular, if you’ve imported data without a header with the `:header`
-;; option set to `false` then the columns can be keyed by their zero-based
-;; index, for instance `(cast-with {0 #(Integer/parseInt %) 1 #(Double/parseDouble %)} rows)`
+;;     ({:this 1, :that 2, :more "stuff"}
+;;      {:this 2, :that 3, :more "other yeah"})
+;;
+;; Note that this function accepts either map or vector rows.
+;; In particular, if you’ve imported data without consuming a header (by either not using mappify or
+;; by passing `:header false` to `process` or `slurp-csv` below), then the columns can be keyed by their
+;; zero-based index. 
+;; For instance, `(cast-with {0 #(Integer/parseInt %) 1 #(Double/parseDouble %)} rows)`
 ;; will parse the first column as integers and the second as doubles.
 
 
@@ -206,7 +218,7 @@
 ;;     (["a" "b" "c"] [1 3/2 2] [5/2 3 7/2])
 ;;
 ;; This could be useful if you know you want to do some processing on all non-header rows, but don't really
-;; need to know which columns are which to do this, and still want to keep the header row
+;; need to know which columns are which to do this, and still want to keep the header row.
 
 
 ;; <br/>
