@@ -463,7 +463,7 @@
           (?>> (-> rows first map?)
                (vectorize {:header header
                            :prepend-header prepend-header}))
-          ; For save measure
+          ; For safe measure
           (cast-with str)
           (batch batch-size)
           (map #(impl/apply-kwargs csv/write-csv % writer-opts))
