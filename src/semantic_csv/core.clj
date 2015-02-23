@@ -127,12 +127,6 @@
 ;;      {:this "2", :that "3", :more "other yeah"})
 ;;
 ;; Much better :-)
-;;
-;; [**Sidenote**: it feels awkward to me that this operates _after_ the initial parsing step has already taken
-;; place.
-;; However, it's not clear how you would do this safely;
-;; It seems you have to make assumptions about how things are going into the parsing function, which I'd
-;; rather avoid.]
 
 
 ;; <br/>
