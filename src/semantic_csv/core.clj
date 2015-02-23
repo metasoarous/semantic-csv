@@ -298,28 +298,30 @@
 ;; These functions can be imported and used in your `:cast-fns` specification
 
 (defn ->int
-  "Translate to int from string or other numeric"
+  "Translate to int from string or other numeric. If string represents a non integer value,
+  it will be rounded down to the nearest int."
   [v]
   (if (string? v)
     (-> v clojure.string/trim Double/parseDouble int)
     (int v)))
 
 (defn ->long
-  "Translating to long from string or other numeric"
+  "Translating to long from string or other numeric. If string represents a non integeral value,
+  it will be rounded down to the nearest long."
   [v]
   (if (string? v)
     (-> v clojure.string/trim Double/parseDouble long)
     (long v)))
 
 (defn ->float
-  "Translate to float from string or other numeric"
+  "Translate to float from string or other numeric."
   [v]
   (if (string? v)
     (-> v clojure.string/trim Float/parseFloat)
     (float v)))
 
 (defn ->double
-  "Translate to double from string or other numeric"
+  "Translate to double from string or other numeric."
   [v]
   (if (string? v)
     (-> v clojure.string/trim Double/parseDouble)
