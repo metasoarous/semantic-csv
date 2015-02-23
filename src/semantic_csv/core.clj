@@ -142,19 +142,14 @@
   "Casts the vals of each row according to `cast-fns`, which maps `column-name -> casting-fn`. An optional
   `opts` map can be used to specify:
   
-  * `:except-first` - Ignore the first row in `rows`; Useful for preserving header rows"
+  * `:except-first` - Ignore the first row in `rows`; Useful for preserving header rows
+  * `:exception-handler` - If cast-fn "
   ([cast-fns rows]
    (cast-with cast-fns {} rows))
-  ([cast-fns {:keys [except-first] :as opts} rows]
+  ([cast-fns {:keys [except-first exception-handler] :as opts} rows]
    (->> rows
         (?>> except-first (drop 1))
-        (map
-          (fn [row]
-            (reduce
-              (fn [row [col update-fn]]
-                (update-in row [col] update-fn))
-              row
-              cast-fns)))
+        (map #(impl/cast-row cast-fns % :exception-handler exception-handler))
         (?>> except-first (cons (first rows))))))
 
 ;; Note that we have a couple of numeric columns in the play data we've been dealing with.

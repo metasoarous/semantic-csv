@@ -29,14 +29,34 @@
     :else         (str x)))
 
 
+(defn row-val-caster
+  "Returns a function that casts casts a single row value based on specified casting function and
+  optionally excpetion handler"
+  [cast-fns exception-handler]
+  (fn [row col]
+    (let [cast-fn (if (map? cast-fns) (cast-fns col) cast-fns)]
+      (try
+        (update-in row [col] cast-fn)
+        (catch Exception e
+          (update-in row [col] (partial exception-handler col)))))))
+
+
 (defn cast-row
   "Format the values of row with the given function. This gives us some flexbility with respect to formatting
   both vectors and maps in similar fashion."
-  [cast-fn row]
-  (cond
-    (map? row)
-      (into {}
-        (map (fn [[k v]] [k (cast-fn v)]) row))
-    :else (mapv cast-fn row)))
+  [cast-fns row & {:keys [only exception-handler]}]
+  (let [cols (cond
+               ; If only is specified, just use that
+               only
+                 (flatten [only])
+               ; If cast-fns is a map, use those keys
+               (map? cast-fns)
+                 (keys cast-fns)
+               ; Then assume cast-fns is single fn, and fork on row type
+               (map? row)
+                 (keys row)
+               :else
+                 (range (count row)))]
+    (reduce (row-val-caster cast-fns exception-handler) row cols)))
 
 

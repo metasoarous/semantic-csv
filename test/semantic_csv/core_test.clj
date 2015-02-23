@@ -52,7 +52,22 @@
     (testing "should work with :except-first"
       (is (= (->> data
                   (cast-with {0 ->int} {:except-first true}))
-             [["1" "this"] [2 "that"]])))))
+             [["1" "this"] [2 "that"]]))))
+  (testing "error handling"
+    (let [data [{:this "3" :that "45x"}
+                {:this "6" :that "78"}]]
+      (testing "should use error-handler when specified for errors"
+        (is (= (->> data
+                    (cast-with {:that ->int} {:exception-handler (fn [_ _] "stuff")})
+                    (first)
+                    :that)
+               "stuff")))
+      (testing "should leave things alone without errors"
+        (is (= (->> data
+                    (cast-with {:that ->int} {:exception-handler (fn [_ _] "stuff")})
+                    (second)
+                    :that)
+               78))))))
 
 
 (deftest cast-all-test
