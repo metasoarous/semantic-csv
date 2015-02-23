@@ -102,17 +102,24 @@
 ;; ## remove-comments
 
 (defn remove-comments
-  "Removes rows which start with a comment character (by default, `#`). Operates by checking the regular 
-  expression against the first argument of every row in the collection."
+  "Removes rows which start with a comment character (by default, `#`). Operates by checking whether
+  the first argument of every row in the collection matches a comment pattern. Also removes empty lines.
+  Options include:
+  
+  * `:comment-re` - Specify a custom regular expression for determining which lines are commented out
+  * `:comment-char` - Checks for lines lines starting with this char"
   ([rows]
-   (remove-comments #"^\#" rows))
-  ([comment-re rows]
-   (remove
-     (fn [row]
-       (let [x (first row)]
-         (when x
-           (re-find comment-re x))))
-     rows)))
+   (remove-comments {:comment-re #"^\#"} rows))
+  ([{:keys [comment-re comment-char]} rows]
+   (let [commented? (if comment-re
+                      (partial re-find comment-re)
+                      #(= comment-char (first %)))]
+     (remove
+       (fn [row]
+         (let [x (first row)]
+           (when x
+             (commented? x))))
+       rows))))
 
 ;; Let's see this in action with the above code:
 ;;
@@ -229,7 +236,7 @@
   * `:remove-empty` - also remove empty rows? Defaults to true.
   * `:cast-fns` - optional map of `colname | index -> cast-fn`; row maps will have the values as output by the
      assigned `cast-fn`."
-  ([{:keys [comment-re mappify header remove-empty cast-fns]
+  ([{:keys [comment-re comment-char mappify header remove-empty cast-fns]
      :or   {comment-re   #"^\#"
             mappify       true
             remove-empty true
@@ -237,7 +244,7 @@
      :as opts}
     rows]
    (->> rows
-        (?>> comment-re (remove-comments comment-re))
+        (?>> comment-re (remove-comments {:comment-re comment-re}))
         (?>> mappify (semantic-csv.core/mappify {:header header}))
         (?>> cast-fns (cast-with cast-fns))))
   ; Use all defaults

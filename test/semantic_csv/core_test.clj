@@ -28,9 +28,12 @@
     (testing "remove-comments should remove #-designated comments by default"
       (is (= (remove-comments data)
              [["// another comment"]])))
-    (testing "remove-comments should take an optional comment designator"
-      (is (= (remove-comments #"^//" data)
-             [["# a comment"]])))))
+    (testing "remove-comments should work with comment-re"
+      (is (= (remove-comments {:comment-re #"^//"} data)
+             [["# a comment"]])))
+    (testing "remove-comments should work with comment-char"
+      (is (= (remove-comments {:comment-char \$} [["$this is a comment"] ["this" "is data"]])
+             [["this" "is data"]])))))
 
 
 (deftest cast-with-test
