@@ -441,9 +441,9 @@
   The Options hash can have the following mappings:
 
   * `:batch-size` - How many rows to format and write at a time?
-  * `:cast-fns` - Formatters to be run on row values. The names used as keys in this map should correspond
-     to keys if rows are maps, and positional indices if they're vectors. Note that this function will call
-     `str` on all values just before writing.
+  * `:cast-fns` - Formatter(s) to be run on row values. As with `cast-with` function, can be either a map
+     of `column-name -> cast-fn`, or a single function to be applied to all values. Note that `str` is called
+     on all values just before writing regardless of `:cast-fns`.
   * `:writer-opts` - Options hash to be passed along to `clojure-csv.core/write-csv`.
   * `:header` - Header to be passed along to `vectorize`, if necessary.
   * `:prepend-header` - Should the header be prepended to the rows written if `vectorize` is called?"
