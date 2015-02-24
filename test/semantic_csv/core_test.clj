@@ -22,6 +22,22 @@
              {:foo "this" :bar "that"})))))
 
 
+(deftest structify-test
+  (let [data [["this" "that"]
+              ["x" "y"]
+              ["z" "w"]]]
+    (testing "should return structs"
+      (is (= (->> data
+                  (mappify {:structs true})
+                  first
+                  type)
+             clojure.lang.PersistentStructMap)))
+    (testing "should have correct structure"
+      (is (= (->> data
+                  (mappify {:structs true}))
+             [{:this "x" :that "y"} {:this "z" :that "w"}])))))
+
+
 (deftest remove-comments-test
   (let [data [["# a comment"]
               ["// another comment"]]]

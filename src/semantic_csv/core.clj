@@ -67,17 +67,22 @@
   values as keys. Note that an optional `opts` map can be passed as a first arg, with the following option:
  
   * `:keyify` - specify whether header/column names should be turned into keywords (deafults to true)
-  * `:header` - specify the header to use for map keys, preventing first row of data from bein gconsumed as header"
+  * `:header` - specify the header to use for map keys, preventing first row of data from bein gconsumed as header
+  * `:structs` - bool; use structs instead of hash-maps or array-maps, for performance boost"
   ([rows]
    (mappify {} rows))
-  ([{:keys [keyify header] :or {keyify true} :as opts}
+  ([{:keys [keyify header structs] :or {keyify true} :as opts}
     rows]
    (let [consume-header (not header)
          header (if header
                   header
                   (first rows))
-         header (if keyify (mapv keyword header) header)]
-     (map (partial impl/mappify-row header)
+         header (if keyify (mapv keyword header) header)
+         map-fn (if structs
+                  (let [s (apply create-struct header)]
+                    (partial apply struct s))
+                  (partial impl/mappify-row header))]
+     (map map-fn
           (if consume-header
             (rest rows)
             rows)))))
