@@ -112,7 +112,8 @@ And there you have it.
 ## Contributing
 
 Feel free to submit a pull request (rebased off of origin/master locally first, please).
-If you're looking for things to help with, please take a look at the [issues](https://github.com/metasoarous/semantic-csv/issues) page.
+If you're looking for things to help with, please take a look at the [GH issues](https://github.com/metasoarous/semantic-csv/issues) page.
+Contributing to the issues with comments, feedback, or requests is also greatly appreciated.
 
 
 ## License
