@@ -157,6 +157,9 @@
       (testing "with :header spec"
         (is (= (first (process {:header ["x" "y" "z"]} parsed-data))
                {:x "this" :y "that" :z "more"})))
+      (testing "with :structs should give structs"
+        (is (= (->> parsed-data (process {:structs true}) first type)
+               clojure.lang.PersistentStructMap)))
       (testing "with defaults"
         (is (= (first (process {:cast-fns {:this #(str % "andstuff")}}
                                parsed-data))

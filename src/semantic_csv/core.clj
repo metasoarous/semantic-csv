@@ -236,12 +236,13 @@
 
   * `:mappify` - bool; transform rows from vectors into maps using `mappify`?
   * `:header` - specify header to be used in mappify; as per `mappify`, first row will not be consumed as header
+  * `:structs` - bool; use structs instead of array-maps or hash-maps in mappify.
   * `:comment-re` - specify a regular expression to use for commenting out lines, or something falsey
      if filtering out comment lines is not desired.
   * `:remove-empty` - also remove empty rows? Defaults to true.
   * `:cast-fns` - optional map of `colname | index -> cast-fn`; row maps will have the values as output by the
      assigned `cast-fn`."
-  ([{:keys [comment-re comment-char mappify header remove-empty cast-fns]
+  ([{:keys [comment-re comment-char mappify header structs remove-empty cast-fns]
      :or   {comment-re   #"^\#"
             mappify       true
             remove-empty true
@@ -250,7 +251,7 @@
     rows]
    (->> rows
         (?>> comment-re (remove-comments {:comment-re comment-re}))
-        (?>> mappify (semantic-csv.core/mappify {:header header}))
+        (?>> mappify (semantic-csv.core/mappify {:header header :structs structs}))
         (?>> cast-fns (cast-with cast-fns))))
   ; Use all defaults
   ([rows]
