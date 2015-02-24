@@ -1,0 +1,21 @@
+
+
+## 0.1.0-alpha2
+
+* Removed `cast-all` in favor of `cast-with` forking behaviour on whether first arg is a map or not.
+* Smarter error handling options in `cast-with`.
+* Added `except-first` macro for processing pipelines where some processing should occur on all lines but the first
+  (useful for leaving headers unmodified).
+* Renamed `:ignore-first` option of `cast-with` to `:except-first` to remain more consistent with above.
+* Added `:header` opt to mappify, which uses specified vector as a header row, preventing consumption of first row for the same.
+* For consistency with above, renamed `:header` arg in processing function to `:mappify`, and added `:header` arg which
+  passes through to `mappify`.
+* Greatly improved testing coverage, with thanks to @ballPointPenguin.
+* Snappier `structify` version of `mappify` with 5x performance characteristics, with thanks to @MichaelBlume
+* Added `->double` and `->long` functions to complement `->int` and `->float`, with thanks to @JonyEpsilon.
+* Safer `->double`, `->long`, `->int` and `->float` functions that don't choke when passed numbers or strings with spaces.
+
+## 0.1.0-aplha1
+
+Initial alpha release
+

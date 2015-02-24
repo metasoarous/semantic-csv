@@ -5,7 +5,7 @@
 **A Clojure library with higher level CSV parsing/processing functionality.**
 
 The two most popular CSV parsing libraries for Clojure presently - `clojure/data.csv` and `clojure-csv` -
-concern themselves only wtih the _syntax_ of CSV;
+concern themselves only with the _syntax_ of CSV;
 They take CSV text, transform it into a collection of vectors of string values, and that's it.
 Semantic CSV takes the next step by giving you tools for addressing the _semantics_ of your data, helping
 you put it in a form that better reflects what it represents.
@@ -16,7 +16,7 @@ you put it in a form that better reflects what it represents.
 * Write from a collection of maps, given a header
 * Apply casting/formatting functions by column name, while reading or writing
 * Remove commented out lines (by default, those starting with `#`)
-* Compatible with any CSV parsing library retruning/writing a sequence of row vectors
+* Compatible with any CSV parsing library returning/writing a sequence of row vectors
 * (SOON) A "sniffer" that reads in N lines, and uses them to guess column types
 
 ## Structure
@@ -32,7 +32,9 @@ REPL.
 
 ## Installation
 
-Assuming you're using Leiningen, just add `[semantic-csv "0.1.0-alpha1"]` to your dependencies.
+Assuming you're using Leiningen, just add the following to your dependencies:
+
+[![Clojars Project](http://clojars.org/semantic-csv/latest-version.svg)](http://clojars.org/semantic-csv)
 
 If you'd like to try the latest version (perhaps useful while things are changing frequently), you may want to try using [`lein-git-deps`](https://github.com/tobyhede/lein-git-deps).
 You can do this by adding the following to your `project.clj`:
@@ -53,13 +55,13 @@ This reflects a nice decoupling of grammar and semantics, in an effort to make t
 ```clojure
 => (require '[clojure.java.io :as io]
             '[clojure-csv :as csv]
-            '[semantic-csv :as sc])
+            '[semantic-csv :as sc :refer :all])
 => (with-open [in-file (io/reader "test/test.csv")]
      (->>
        (csv/parse-csv in-file)
-       sc/remove-comments
-       sc/mappify
-       (sc/cast-with {:this sc/->int})
+       remove-comments
+       mappify
+       (cast-with {:this ->int})
        doall))
 
 ({:this 1, :that "2", :more "stuff"}
@@ -71,9 +73,9 @@ However, some opinionated, but configurable convenience functions are also provi
 ```clojure
 (with-open [in-file (io/reader "test/test.csv")]
   (doall
-    (process (csv/parse-csv in-file))))
+    (process (parse-csv in-file))))
 ```
-And for the truly irreverant... (who don't need _computer_ laziness):
+And for the truly irreverent... (who don't need _computer_ laziness):
 
 ```clojure
 (slurp-and-process "test/test.csv")
@@ -105,6 +107,13 @@ And again, as with the input processing functions, here we also provide a quick 
 ```
 
 And there you have it.
+
+
+## Contributing
+
+Feel free to submit a pull request.
+If you're looking for things to help with, please take a look at the [GH issues](https://github.com/metasoarous/semantic-csv/issues) page.
+Contributing to the issues with comments, feedback, or requests is also greatly appreciated.
 
 
 ## License
