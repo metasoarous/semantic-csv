@@ -63,11 +63,11 @@
 ;; ## mappify
 
 (defn mappify
-  "Comsumes the first item as a header, and returns a seq of the remaining items as a maps with the header
+  "Consumes the first item as a header, and returns a seq of the remaining items as a maps with the header
   values as keys. Note that an optional `opts` map can be passed as a first arg, with the following option:
  
-  * `:keyify` - specify whether header/column names should be turned into keywords (deafults to true)
-  * `:header` - specify the header to use for map keys, preventing first row of data from bein gconsumed as header
+  * `:keyify` - specify whether header/column names should be turned into keywords (defaults to true)
+  * `:header` - specify the header to use for map keys, preventing first row of data from being consumed as header
   * `:structs` - bool; use structs instead of hash-maps or array-maps, for performance boost"
   ([rows]
    (mappify {} rows))
@@ -150,7 +150,7 @@
   Additionally, an `opts` map can be used to specify:
   
   * `:except-first` - Ignore the first row in `rows`; Useful for preserving header rows.
-  * `:exception-handler` - If cast-fn raises an excpetion, this function will be called with args
+  * `:exception-handler` - If cast-fn raises an exception, this function will be called with args
     `colname, value`. The result of the exception handler will be used as the parse value.
   * `:only` - Only the column(s) specified will be casted."
   ([cast-fns rows]
@@ -320,7 +320,7 @@
     (int v)))
 
 (defn ->long
-  "Translating to long from string or other numeric. If string represents a non integeral value,
+  "Translating to long from string or other numeric. If string represents a non integer value,
   it will be rounded down to the nearest long."
   [v]
   (if (string? v)
