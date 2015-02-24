@@ -2880,6 +2880,7 @@ you put it in a form that better reflects what it represents.</p>
 <li>Absorb header row as a vector of column names, and return remaining rows as maps of <code>column-name -&gt; row-val</code></li>
 <li>Write from a collection of maps, given a header</li>
 <li>Apply casting/formatting functions by column name, while reading or writing</li>
+<li>Numeric casting function helpers</li>
 <li>Remove commented out lines (by default, those starting with <code>#</code>)</li>
 <li>Compatible with any CSV parsing library returning/writing a sequence of row vectors</li>
 <li>(SOON) A "sniffer" that reads in N lines, and uses them to guess column types</li>
@@ -2903,7 +2904,7 @@ REPL.</p>
             [semantic-csv.impl.core :as impl]
             [plumbing.core :as pc :refer [?&gt;&gt;]]))</pre></td></tr><tr><td class="docs"><p>To start, require this namespace, <code>clojure.java.io</code>, and your favorite CSV parser (e.g.,
 <a href="https://github.com/davidsantiago/clojure-csv">clojure-csv</a> or 
-<a href="https://github.com/clojure/data.csv">clojure/data.csv</a>; we'll be using the former).</p>
+<a href="https://github.com/clojure/data.csv">clojure/data.csv</a>; we'll mostly be using the former).</p>
 
 <pre><code>(require '[semantic-csv.core :refer :all]
          '[clojure-csv.core :as csv]
@@ -2918,25 +2919,39 @@ processing functions.</p>
 
 <p>Note that all of these processing functions leave the rows collection as the final argument.
 This is to make these functions interoperable with other standard collection processing functions (<code>map</code>,
-<code>filter</code>, <code>take</code>, etc.) in the context of the <code>-&gt;&gt;</code> threading macro.
-You're welcome.</p>
+<code>filter</code>, <code>take</code>, etc.) in the context of the <code>-&gt;&gt;</code> threading macro.</p>
+
+<p>Let's start with what may be the most basic and frequently needed function:</p>
 </td><td class="codes"></td></tr><tr><td class="docs"><p><br/></p>
 
 <h2>mappify</h2>
-</td><td class="codes"></td></tr><tr><td class="docs"><p>Comsumes the first item as a header, and returns a seq of the remaining items as a maps with the header
-  values as keys. Note that an optional <code>opts</code> map can be passed as a first arg, with the following option:</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Takes a sequence of row vectors, as commonly produced by csv parsing libraries, and returns a sequence of
+  maps. By default, the first row vector will be interpreted as a header, and used as the keys for the maps.
+  However, this and other behaviour are customizable via an optional <code>opts</code> map with the following options:</p>
 
 <ul>
-<li><code>:keyify</code> - specify whether header/column names should be turned into keywords (deafults to true)</li>
+<li><code>:keyify</code> - bool; specify whether header/column names should be turned into keywords (default: <code>true</code>).</li>
+<li><code>:header</code> - specify the header to use for map keys, preventing first row of data from being consumed as header.</li>
+<li><code>:structs</code> - bool; use structs instead of hash-maps or array-maps, for performance boost (default: <code>false</code>).</li>
 </ul>
 </td><td class="codes"><pre class="brush: clojure">(defn mappify
   ([rows]
    (mappify {} rows))
-  ([{:keys [keyify] :or {keyify true} :as opts}
+  ([{:keys [keyify header structs] :or {keyify true} :as opts}
     rows]
-   (let [header (first rows)
-         header (if keyify (mapv keyword header) header)]
-     (map (partial impl/mappify-row header) (rest rows)))))</pre></td></tr><tr><td class="docs"><p>Here's an example to whet our whistle:</p>
+   (let [consume-header (not header)
+         header (if header
+                  header
+                  (first rows))
+         header (if keyify (mapv keyword header) header)
+         map-fn (if structs
+                  (let [s (apply create-struct header)]
+                    (partial apply struct s))
+                  (partial impl/mappify-row header))]
+     (map map-fn
+          (if consume-header
+            (rest rows)
+            rows)))))</pre></td></tr><tr><td class="docs"><p>Here's an example to whet our whistle:</p>
 
 <pre><code>=&gt; (with-open [in-file (io/reader "test/test.csv")]
      (-&gt;&gt;
@@ -2949,23 +2964,36 @@ You're welcome.</p>
  {:this "2", :that "3", :more "other yeah"})
 </code></pre>
 
-<p>Note that "# some comment lines..." was really intended to be left out of the <em>data</em> as a comment.
-We can solve this with the following function:</p>
+<p><br/></p>
+
+<p>Note that <code>"# some comment lines..."</code> was really intended to be left out as a comment.
+We can address this with the following function:</p>
 </td><td class="codes"></td></tr><tr><td class="docs"><p><br/></p>
 
 <h2>remove-comments</h2>
-</td><td class="codes"></td></tr><tr><td class="docs"><p>Removes rows which start with a comment character (by default, <code>#</code>). Operates by checking the regular 
-  expression against the first argument of every row in the collection.</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Removes rows which start with a comment character (by default, <code>#</code>). Operates by checking whether
+  the first item of every row in the collection matches a comment pattern. Also removes empty lines.
+  Options include:</p>
+
+<ul>
+<li><code>:comment-re</code> - Specify a custom regular expression for determining which lines are commented out.</li>
+<li><p><code>:comment-char</code> - Checks for lines lines starting with this char.</p>
+
+<p>Note: this function only works with rows that are vectors, and so should always be used before mappify.</p></li>
+</ul>
 </td><td class="codes"><pre class="brush: clojure">(defn remove-comments
   ([rows]
-   (remove-comments #&quot;^\#&quot; rows))
-  ([comment-re rows]
-   (remove
-     (fn [row]
-       (let [x (first row)]
-         (when x
-           (re-find comment-re x))))
-     rows)))</pre></td></tr><tr><td class="docs"><p>Let's see this in action with the above code:</p>
+   (remove-comments {:comment-re #&quot;^\#&quot;} rows))
+  ([{:keys [comment-re comment-char]} rows]
+   (let [commented? (if comment-re
+                      (partial re-find comment-re)
+                      #(= comment-char (first %)))]
+     (remove
+       (fn [row]
+         (let [x (first row)]
+           (when x
+             (commented? x))))
+       rows))))</pre></td></tr><tr><td class="docs"><p>Let's see this in action with the same data we looked at in the last example:</p>
 
 <pre><code>=&gt; (with-open [in-file (io/reader "test/test.csv")]
      (-&gt;&gt;
@@ -2980,35 +3008,31 @@ We can solve this with the following function:</p>
 
 <p>Much better :-)</p>
 
-<p>[<strong>Sidenote</strong>: it feels awkward to me that this operates <em>after</em> the initial parsing step has already taken
-place.
-However, it's not clear how you would do this safely;
-It seems you have to make assumptions about how things are going into the parsing function, which I'd
-rather avoid.]</p>
+<p><br/>
+Next, let's observe that <code>:this</code> and <code>:that</code> point to strings, while they should really be pointing to
+numeric values.
+This can be addressed with the following function:</p>
 </td><td class="codes"></td></tr><tr><td class="docs"><p><br/></p>
 
 <h2>cast-with</h2>
-</td><td class="codes"></td></tr><tr><td class="docs"><p>Casts the vals of each row according to <code>cast-fns</code>, which maps <code>column-name -&gt; casting-fn</code>. An optional
-  <code>opts</code> map can be used to specify:</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Casts the vals of each row according to <code>cast-fns</code>, which must either be a map of
+  <code>column-name -&gt; casting-fn</code> or a single casting function to be applied towards all columns.
+  Additionally, an <code>opts</code> map can be used to specify:</p>
 
 <ul>
-<li><code>:ignore-first</code> - Ignore the first row in <code>rows</code>; Useful for preserving header rows</li>
+<li><code>:except-first</code> - Leaves the first row unaltered; useful for preserving header row.</li>
+<li><code>:exception-handler</code> - If cast-fn raises an exception, this function will be called with args
+<code>colname, value</code>, and the result used as the parse value.</li>
+<li><code>:only</code> - Only cast the specified column(s); can be either a single column name, or a vector of them.</li>
 </ul>
 </td><td class="codes"><pre class="brush: clojure">(defn cast-with
   ([cast-fns rows]
    (cast-with cast-fns {} rows))
-  ([cast-fns {:keys [ignore-first] :as opts} rows]
+  ([cast-fns {:keys [except-first exception-handler only] :as opts} rows]
    (-&gt;&gt; rows
-        (?&gt;&gt; ignore-first (drop 1))
-        (map
-          (fn [row]
-            (reduce
-              (fn [row [col update-fn]]
-                (update-in row [col] update-fn))
-              row
-              cast-fns)))
-        (?&gt;&gt; ignore-first (cons (first rows))))))</pre></td></tr><tr><td class="docs"><p>Note that we have a couple of numeric columns in the play data we've been dealing with.
-Let's try casting them as such using <code>cast-with</code>:</p>
+        (?&gt;&gt; except-first (drop 1))
+        (map #(impl/cast-row cast-fns % :only only :exception-handler exception-handler))
+        (?&gt;&gt; except-first (cons (first rows))))))</pre></td></tr><tr><td class="docs"><p>Let's try casting a numeric column using this function:</p>
 
 <pre><code>=&gt; (with-open [in-file (io/reader "test/test.csv")]
      (-&gt;&gt;
@@ -3022,33 +3046,34 @@ Let's try casting them as such using <code>cast-with</code>:</p>
  {:this 2, :that "3", :more "other yeah"})
 </code></pre>
 
-<p>Lovely :-)</p>
+<p>Alternatively, if we want to cast multiple columns using a single function, we can do so
+by passing a single casting function as the first argument.</p>
 
-<p>Note from the implementation here that each row need only be associative.
-So map or vector rows are fine, but lists or lazy sequences would not be.</p>
-</td><td class="codes"></td></tr><tr><td class="docs"><p><br/></p>
+<pre><code>=&gt; (with-open [in-file (io/reader "test/test.csv")]
+     (-&gt;&gt;
+       (csv/parse-csv in-file)
+       remove-comments
+       mappify
+       (cast-with #(Integer/parseInt %) {:only [:this :that]})
+       doall))
 
-<h2>cast-all</h2>
-</td><td class="codes"></td></tr><tr><td class="docs"><p>Casts <em>multiple</em> column values with the given function. Optional <code>opts</code> map can be used to specify:</p>
+({:this 1, :that 2, :more "stuff"}
+ {:this 2, :that 3, :more "other yeah"})
+</code></pre>
 
-<ul>
-<li><code>:only</code> - Only run <code>cast-fn</code> on these columns (default is to run on all columns)</li>
-<li><code>:ignore-first</code> - As in <code>cast-with</code>, you can optionally ignore the first row</li>
-</ul>
-</td><td class="codes"><pre class="brush: clojure">(defn cast-all
-  ([cast-fn rows]
-   (map (partial impl/cast-row cast-fn) rows))
-  ([cast-fn {:keys [ignore-first only] :as opts} rows]
-   (case (mapv boolean [ignore-first only])
-     [false false]
-       (cast-all cast-fn rows)
-     [true false]
-       (-&gt;&gt; rows
-            (drop 1)
-            (cast-all cast-fn rows)
-            (cons (first rows)))
-     (let [cast-fns (into {} (map vector only cast-fn))]
-       (cast-with cast-fns {:ignore-first ignore-first} rows)))))</pre></td></tr><tr><td class="docs"><p><br /></p>
+<p>Note that this function handles either map or vector rows.
+In particular, if you’ve imported data without consuming a header (by either not using mappify or
+by passing <code>:header false</code> to <code>process</code> or <code>slurp-csv</code> below), then the columns can be keyed by their
+zero-based index. 
+For instance, <code>(cast-with {0 #(Integer/parseInt %) 1 #(Double/parseDouble %)} rows)</code>
+will parse the first column as integers and the second as doubles.</p>
+
+<p><br/>
+It's worth pointing out this function isn't strictly an <em>input</em> processing function, but could be
+used for intermediate or output preparation processing.
+Similarly, the following macro provides functionality which could be useful at multiple points of a
+pipeline.</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><p><br /></p>
 
 <h2>except-first</h2>
 </td><td class="codes"></td></tr><tr><td class="docs"><p>Takes any number of forms and a final <code>data</code> argument. Threads the data through the forms, as though
@@ -3063,26 +3088,34 @@ So map or vector rows are fine, but lists or lazy sequences would not be.</p>
         (let [first-row# (first rows#)
               rest-rows# (rest rows#)]
           (cons first-row# (-&gt;&gt; rest-rows# ~@forms))))
-        ~data)))</pre></td></tr><tr><td class="docs"><p>This macro gives us as way to process every row <em>except</em> for the first row, which might represent header
-information.
+        ~data)))</pre></td></tr><tr><td class="docs"><p>This macro generalizes the <code>:except-first</code> option of the <code>cast-with</code> function for arbitrary processing,
+operating on every row <em>except</em> for the first.
 For example:</p>
 
 <pre><code>=&gt; (-&gt;&gt; [["a" "b" "c"] [1 2 3] [4 5 6]]
-        (except-first (cast-all inc)
-                      (cast-all #(/ % 2))))
+        (except-first (cast-with inc)
+                      (cast-with #(/ % 2))))
 (["a" "b" "c"] [1 3/2 2] [5/2 3 7/2])
 </code></pre>
 
 <p>This could be useful if you know you want to do some processing on all non-header rows, but don't really
-need to know which columns are which to do this, and still want to keep the header row</p>
+need to know which columns are which to do this, and still want to keep the header row.</p>
+
+<p><br/>
+Hopefully you see the value of these functions being separate, composable units.
+However, sometimes this modularity isn't necessary, and you want something quick and dirty to
+get the job done, particularly at the REPL.
+To meet this need, the following convenience functions are provided:</p>
 </td><td class="codes"></td></tr><tr><td class="docs"><p><br/></p>
 
 <h2>process</h2>
-</td><td class="codes"></td></tr><tr><td class="docs"><p>This function wraps together all of the various input processing capabilities into one, with options
+</td><td class="codes"></td></tr><tr><td class="docs"><p>This function wraps together the most frequently used input processing capabilities,
   controlled by an <code>opts</code> hash with opinionated defaults:</p>
 
 <ul>
-<li><code>:header</code> - bool; consume the first row as a header?</li>
+<li><code>:mappify</code> - bool; transform rows from vectors into maps using <code>mappify</code>.</li>
+<li><code>:header</code> - specify header to be used in mappify; as per <code>mappify</code>, first row will not be consumed as header</li>
+<li><code>:structs</code> - bool; use structs instead of array-maps or hash-maps in mappify.</li>
 <li><code>:comment-re</code> - specify a regular expression to use for commenting out lines, or something falsey
  if filtering out comment lines is not desired.</li>
 <li><code>:remove-empty</code> - also remove empty rows? Defaults to true.</li>
@@ -3090,16 +3123,16 @@ need to know which columns are which to do this, and still want to keep the head
  assigned <code>cast-fn</code>.</li>
 </ul>
 </td><td class="codes"><pre class="brush: clojure">(defn process
-  ([{:keys [comment-re header remove-empty cast-fns]
+  ([{:keys [comment-re comment-char mappify header structs remove-empty cast-fns]
      :or   {comment-re   #&quot;^\#&quot;
-            header       true
+            mappify      true
             remove-empty true
             cast-fns     {}}
      :as opts}
     rows]
    (-&gt;&gt; rows
-        (?&gt;&gt; comment-re (remove-comments comment-re))
-        (?&gt;&gt; header (mappify))
+        (?&gt;&gt; comment-re (remove-comments {:comment-re comment-re}))
+        (?&gt;&gt; mappify (semantic-csv.core/mappify {:header header :structs structs}))
         (?&gt;&gt; cast-fns (cast-with cast-fns))))
   ; Use all defaults
   ([rows]
@@ -3147,28 +3180,52 @@ need to know which columns are which to do this, and still want to keep the head
 
 <h1>Some casting functions for your convenience</h1>
 
-<p>These functions can be imported and used in your <code>:cast-fns</code> specification</p>
-</td><td class="codes"></td></tr><tr><td class="docs"><p>Translating string into integers</p>
+<p>These functions can be imported and used in your <code>:cast-fns</code> specification.
+They focus on handling some of the mess of dealing with numeric casting.</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><h2>->int</h2>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Translate to int from string or other numeric. If string represents a non integer value,
+  it will be rounded down to the nearest int.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn -&gt;int
-  [string]
-  (Integer/parseInt string))</pre></td></tr><tr><td class="docs"><p>Translate into float</p>
+  [v]
+  (if (string? v)
+    (-&gt; v clojure.string/trim Double/parseDouble int)
+    (int v)))</pre></td></tr><tr><td class="docs"><h2>->long</h2>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Translate to long from string or other numeric. If string represents a non integer value,
+  will be rounded down to the nearest long.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn -&gt;long
+  [v]
+  (if (string? v)
+    (-&gt; v clojure.string/trim Double/parseDouble long)
+    (long v)))</pre></td></tr><tr><td class="docs"><h2>->float</h2>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Translate to float from string or other numeric.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn -&gt;float
-  [string]
-  (Float/parseFloat string))</pre></td></tr><tr><td class="docs"><pre><code>(slurp-csv "test/test.csv"
+  [v]
+  (if (string? v)
+    (-&gt; v clojure.string/trim Float/parseFloat)
+    (float v)))</pre></td></tr><tr><td class="docs"><h2>->double</h2>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Translate to double from string or other numeric.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn -&gt;double
+  [v]
+  (if (string? v)
+    (-&gt; v clojure.string/trim Double/parseDouble)
+    (double v)))</pre></td></tr><tr><td class="docs"><pre><code>(slurp-csv "test/test.csv"
            :cast-fns {:this -&gt;int})
 </code></pre>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Note these functions place a higher emphasis on flexibility and convenience than performance, as you can
+likely see from their implementations.
+If maximum performance is a concern for you, and your data is fairly regular, you may be able to get away with
+less robust functions, which shouldn't be hard to implement yourself.
+For most cases though, the performance of those provided here should be fine.</p>
 </td><td class="codes"></td></tr><tr><td class="docs"><p><br/></p>
 
 <h1>Output processing functions</h1>
-</td><td class="codes"></td></tr><tr><td class="docs"><p>As with the input processing functions, the output processing functions are designed to be small, modular
-pieces you compose together.
-Using these it's expected that you push your data through the processing functions and into a third party
-writer.
-But as with the input processing functions, we offer some higher level, opinionated but configurable functions
-which automate some of this for you.</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>As with the input processing functions, the output processing functions are designed to be small,
+composable pieces which help you push your data through to a third party writer.
+And as with the input processing functions, higher level, opinionated, but configurable functions
+are offered which automate some of this for you.</p>
 
-<p>We've already looked at <code>cast-with</code> and <code>cast-all</code>, which can be useful as output as well as input
-processing functions.
+<p>We've already looked at <code>cast-with</code>, which can be useful in output as well as input
+processing.
 Another important function we'll need is one that takes a sequence of maps and turns it into a sequence
 of vectors since this is what most of our csv writing/formatting libraries will want.</p>
 </td><td class="codes"></td></tr><tr><td class="docs"><p><br/></p>
@@ -3236,6 +3293,8 @@ results, and likely crash.
 To write <em>lazily</em>, you have to take some number of rows, write them, and repeat till you're done.
 Our <code>batch</code> function helps by giving you a lazy sequence of batches of <code>n</code> rows at a time, letting you pass
 <em>that</em> through to something that writes off the chunks lazily.</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><p><br/>
+And as promised, a function for doing all the dirty work for you:</p>
 </td><td class="codes"></td></tr><tr><td class="docs"><p><br/></p>
 
 <h2>spit-csv</h2>
@@ -3249,9 +3308,9 @@ Our <code>batch</code> function helps by giving you a lazy sequence of batches o
 
 <p>The Options hash can have the following mappings:</p></li>
 <li><p><code>:batch-size</code> - How many rows to format and write at a time?</p></li>
-<li><code>:cast-fns</code> - Formatters to be run on row values. The names used as keys in this map should correspond
- to keys if rows are maps, and positional indices if they're vectors. Note that this function will call
- <code>str</code> on all values just before writing.</li>
+<li><code>:cast-fns</code> - Formatter(s) to be run on row values. As with <code>cast-with</code> function, can be either a map
+ of <code>column-name -&gt; cast-fn</code>, or a single function to be applied to all values. Note that <code>str</code> is called
+ on all values just before writing regardless of <code>:cast-fns</code>.</li>
 <li><code>:writer-opts</code> - Options hash to be passed along to <code>clojure-csv.core/write-csv</code>.</li>
 <li><code>:header</code> - Header to be passed along to <code>vectorize</code>, if necessary.</li>
 <li><code>:prepend-header</code> - Should the header be prepended to the rows written if <code>vectorize</code> is called?</li>
@@ -3273,17 +3332,15 @@ Our <code>batch</code> function helps by giving you a lazy sequence of batches o
           (?&gt;&gt; (-&gt; rows first map?)
                (vectorize {:header header
                            :prepend-header prepend-header}))
-          ; For save measure
-          (cast-all str)
+          ; For safe measure
+          (cast-with str)
           (batch batch-size)
           (map #(impl/apply-kwargs csv/write-csv % writer-opts))
           (reduce
             (fn [w rowstr]
               (.write w rowstr)
               w)
-            file)))))</pre></td></tr><tr><td class="docs"><p>Like <code>slurp-csv</code>, this is a convenience function which wraps together a set of opinionated options
-for writing data to the specified file handle or filename.
-Note that since we use <code>clojure-csv</code> here, we offer a <code>:batch</code> option that lets you format and write small
+            file)))))</pre></td></tr><tr><td class="docs"><p>Note that since we use <code>clojure-csv</code> here, we offer a <code>:batch-size</code> option that lets you format and write small
 batches of rows out at a time, to avoid constructing a massive string representation of all the data in the
 case of bigger data sets.</p>
 </td><td class="codes"></td></tr><tr><td class="docs"><p><br/></p>
@@ -3292,8 +3349,9 @@ case of bigger data sets.</p>
 
 <p>Let's see how Semantic CSV works in the context of a little data pipeline.
 We're going to thread data in, transform into maps, run some computations for each row and assoc in,
-then write the modified data out to a file, all lazily.
-First let's show this with <code>clojure/data.csv</code>, which I find a little easier to use for writing.</p>
+then write the modified data out to a file, all lazily.</p>
+
+<p>First let's show this with <code>clojure/data.csv</code>, which I find a little easier to use for writing:</p>
 
 <pre><code>(require '[clojure.data.csv :as cd-csv])
 
@@ -3313,19 +3371,19 @@ First let's show this with <code>clojure/data.csv</code>, which I find a little 
     (cd-csv/write-csv out-file)))
 </code></pre>
 
-<p>Now let's see what this looks like with <code>clojure-csv</code>.
-Note that as mentioned above, <code>clojure-csv</code> doesn't actually handle file writing for you, just formatting
-into a CSV string.
+<p>Now let's see what this looks like with <code>clojure-csv</code>:</p>
+
+<p>As mentioned above, <code>clojure-csv</code> doesn't handle file writing for you, just formatting.
 So, to maintain laziness, you'll have to add a couple steps to the end.
 Additionally, it doesn't accept row items with anything that isn't a string, in contrast with
-<code>clojure/data.csv</code> which casts to a string for you, so we'll have to account for that as well.</p>
+<code>clojure/data.csv</code>, so we'll have to account for this as well.</p>
 
 <pre><code>(with-open [in-file (io/reader "test/test.csv")
             out-file (io/writer "test-out.csv")]
   (-&gt;&gt;
     (csv/parse-csv in-file)
     ...
-    (cast-all str)
+    (cast-with str)
     (batch 1)
     (map csv/write-csv)
     (reduce
@@ -3335,8 +3393,13 @@ Additionally, it doesn't accept row items with anything that isn't a string, in 
       out-file)))
 </code></pre>
 
-<p><br/></p>
-</td><td class="codes"></td></tr><tr><td class="docs"><h1>That's it for the core API</h1>
+<p><br/>
+And there you have it.
+A simple, composable, and easy to use library for taking you the extra mile with CSV processing in
+Clojure.</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><p><br/></p>
+
+<h1>That's it for the core API</h1>
 
 <p>Hope you find this library useful.
 If you have questions or comments please either <a href="https://github.com/metasoarous/semantic-csv/issues">submit an issue</a>
@@ -3360,27 +3423,32 @@ or join us in the <a href="https://gitter.im/metasoarous/semantic-csv">dedicated
   (cond
     (string? x)   x
     (keyword? x)  (-&gt;&gt; x str (drop 1) (apply str))
-    :else         (str x)))</pre></td></tr><tr><td class="docs"><p>Format the values of row with the given function. This gives us some flexbility with respect to formatting
+    :else         (str x)))</pre></td></tr><tr><td class="docs"><p>Returns a function that casts casts a single row value based on specified casting function and
+  optionally excpetion handler</p>
+</td><td class="codes"><pre class="brush: clojure">(defn row-val-caster
+  [cast-fns exception-handler]
+  (fn [row col]
+    (let [cast-fn (if (map? cast-fns) (cast-fns col) cast-fns)]
+      (try
+        (update-in row [col] cast-fn)
+        (catch Exception e
+          (update-in row [col] (partial exception-handler col)))))))</pre></td></tr><tr><td class="docs"><p>Format the values of row with the given function. This gives us some flexbility with respect to formatting
   both vectors and maps in similar fashion.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn cast-row
-  [cast-fn row]
-  (cond
-    (map? row)
-      (into {}
-        (map (fn [[k v]] [k (cast-fn v)]) row))
-    :else (mapv cast-fn row)))</pre></td></tr><tr><td class="docs"><p>Takes any number of forms and a final <code>data</code> argument. Threads the data through the forms, as though
-  with <code>-&gt;&gt;</code>, except that the first item in <code>data</code> remains unaltered. This is intended to operate within
-  the context of an <em>actual</em> <code>-&gt;&gt;</code> threading macro for processing, where you might want to leave a header
-  column unmodified by your processing functions.</p>
-</td><td class="codes"><pre class="brush: clojure">(defmacro except-first
-  [&amp; forms-and-data]
-  (let [data (last forms-and-data)
-        forms (butlast forms-and-data)]
-    `((fn [rows#]
-        (let [first-row# (first rows#)
-              rest-rows# (rest rows#)]
-          (cons first-row# (-&gt;&gt; rest-rows# ~@forms))))
-        ~data)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a><div id="floating-toc"><ul><li class="floating-toc-li" id="floating-toc_semantic-csv.core">semantic-csv.core</li><li class="floating-toc-li" id="floating-toc_semantic-csv.impl.core">semantic-csv.impl.core</li></ul></div></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+  [cast-fns row &amp; {:keys [only exception-handler]}]
+  (let [cols (cond
+               ; If only is specified, just use that
+               only
+                 (flatten [only])
+               ; If cast-fns is a map, use those keys
+               (map? cast-fns)
+                 (keys cast-fns)
+               ; Then assume cast-fns is single fn, and fork on row type
+               (map? row)
+                 (keys row)
+               :else
+                 (range (count row)))]
+    (reduce (row-val-caster cast-fns exception-handler) row cols)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a><div id="floating-toc"><ul><li class="floating-toc-li" id="floating-toc_semantic-csv.core">semantic-csv.core</li><li class="floating-toc-li" id="floating-toc_semantic-csv.impl.core">semantic-csv.impl.core</li></ul></div></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack

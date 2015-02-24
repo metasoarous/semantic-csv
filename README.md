@@ -55,13 +55,13 @@ This reflects a nice decoupling of grammar and semantics, in an effort to make t
 ```clojure
 => (require '[clojure.java.io :as io]
             '[clojure-csv :as csv]
-            '[semantic-csv :as sc])
+            '[semantic-csv :as sc :refer :all])
 => (with-open [in-file (io/reader "test/test.csv")]
      (->>
        (csv/parse-csv in-file)
-       sc/remove-comments
-       sc/mappify
-       (sc/cast-with {:this sc/->int})
+       remove-comments
+       mappify
+       (cast-with {:this ->int})
        doall))
 
 ({:this 1, :that "2", :more "stuff"}
@@ -73,7 +73,7 @@ However, some opinionated, but configurable convenience functions are also provi
 ```clojure
 (with-open [in-file (io/reader "test/test.csv")]
   (doall
-    (process (csv/parse-csv in-file))))
+    (process (parse-csv in-file))))
 ```
 And for the truly irreverent... (who don't need _computer_ laziness):
 
@@ -111,7 +111,7 @@ And there you have it.
 
 ## Contributing
 
-Feel free to submit a pull request (rebased off of origin/master locally first, please).
+Feel free to submit a pull request.
 If you're looking for things to help with, please take a look at the [GH issues](https://github.com/metasoarous/semantic-csv/issues) page.
 Contributing to the issues with comments, feedback, or requests is also greatly appreciated.
 
