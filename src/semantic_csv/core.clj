@@ -268,8 +268,7 @@
   ([{:keys [comment-re comment-char mappify header structs remove-empty cast-fns]
      :or   {comment-re   #"^\#"
             mappify      true
-            remove-empty true
-            cast-fns     {}}
+            remove-empty true}
      :as opts}
     rows]
    (->> rows
