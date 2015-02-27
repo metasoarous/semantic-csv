@@ -268,7 +268,7 @@
     * `:comment-char` - specify a comment character to use for filtering out comments; overrides comment-re.
     * `:cast-fns` - optional map of `colname | index -> cast-fn`; row maps will have the values as output by the
        assigned `cast-fn`."
-    ([{:keys [remove-comments comment-re comment-char mappify header structs cast-fns]
+    ([{:keys [mappify header remove-comments comment-re comment-char structs cast-fns]
        :or   {remove-comments true
               comment-re   #"^\#"
               mappify      true}
