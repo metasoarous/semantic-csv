@@ -278,7 +278,7 @@
         (?>> cast-fns (cast-with cast-fns))))
   ; Use all defaults
   ([rows]
-   (process {} rows))))
+   (process {} rows)))
 
 ;; Using this function, the code we've been building above is reduced to the following:
 ;;
