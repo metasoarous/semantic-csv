@@ -1,4 +1,7 @@
 
+## 0.1.0-alpha3
+
+* Cleaned up `process` function kw-args.
 
 ## 0.1.0-alpha2
 

@@ -267,9 +267,9 @@
   * `:cast-fns` - optional map of `colname | index -> cast-fn`; row maps will have the values as output by the
      assigned `cast-fn`."
   ([{:keys [mappify header remove-comments comment-re comment-char structs cast-fns]
-     :or   {remove-comments true
-            comment-re   #"^\#"
-            mappify      true}
+     :or   {mappify         true
+            remove-comments true
+            comment-re      #"^\#"}
      :as opts}
     rows]
    (->> rows
