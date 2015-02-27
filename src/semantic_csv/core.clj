@@ -253,32 +253,34 @@
 ;; <br/>
 ;; ## process
 
-(defn process
-  "This function wraps together the most frequently used input processing capabilities,
-  controlled by an `opts` hash with opinionated defaults:
+(let [mappify-fn         mappify
+      remove-comments-fn remove-comments]
+  (defn process
+    "This function wraps together the most frequently used input processing capabilities,
+    controlled by an `opts` hash with opinionated defaults:
 
-  * `:mappify` - bool; transform rows from vectors into maps using `mappify`.
-  * `:header` - specify header to be used in mappify; as per `mappify`, first row will not be consumed as header
-  * `:structs` - bool; use structs instead of array-maps or hash-maps in mappify.
-  * `:remove-comments` - bool; remove comment lines, as specified by `:comment-re` or `:comment-char`. Also
-     removes empty lines. Defaults to `true`.
-  * `:comment-re` - specify a regular expression to use for commenting out lines.
-  * `:comment-char` - specify a comment character to use for filtering out comments; overrides comment-re.
-  * `:cast-fns` - optional map of `colname | index -> cast-fn`; row maps will have the values as output by the
-     assigned `cast-fn`."
-  ([{:keys [remove-comments comment-re comment-char mappify header structs cast-fns]
-     :or   {remove-comments true
-            comment-re   #"^\#"
-            mappify      true}
-     :as opts}
-    rows]
-   (->> rows
-        (?>> remove-comments (semantic-csv.core/remove-comments {:comment-re comment-re :comment-char comment-char}))
-        (?>> mappify (semantic-csv.core/mappify {:header header :structs structs}))
-        (?>> cast-fns (cast-with cast-fns))))
-  ; Use all defaults
-  ([rows]
-   (process {} rows)))
+    * `:mappify` - bool; transform rows from vectors into maps using `mappify`.
+    * `:header` - specify header to be used in mappify; as per `mappify`, first row will not be consumed as header
+    * `:structs` - bool; use structs instead of array-maps or hash-maps in mappify.
+    * `:remove-comments` - bool; remove comment lines, as specified by `:comment-re` or `:comment-char`. Also
+       removes empty lines. Defaults to `true`.
+    * `:comment-re` - specify a regular expression to use for commenting out lines.
+    * `:comment-char` - specify a comment character to use for filtering out comments; overrides comment-re.
+    * `:cast-fns` - optional map of `colname | index -> cast-fn`; row maps will have the values as output by the
+       assigned `cast-fn`."
+    ([{:keys [remove-comments comment-re comment-char mappify header structs cast-fns]
+       :or   {remove-comments true
+              comment-re   #"^\#"
+              mappify      true}
+       :as opts}
+      rows]
+     (->> rows
+          (?>> remove-comments (remove-comments-fn {:comment-re comment-re :comment-char comment-char}))
+          (?>> mappify (mappify-fn {:header header :structs structs}))
+          (?>> cast-fns (cast-with cast-fns))))
+    ; Use all defaults
+    ([rows]
+     (process {} rows))))
 
 ;; Using this function, the code we've been building above is reduced to the following:
 ;;
