@@ -258,6 +258,7 @@
   controlled by an `opts` hash with opinionated defaults:
 
   * `:mappify` - bool; transform rows from vectors into maps using `mappify`.
+  * `:keyify` - bool; specify whether header/column names should be turned into keywords (default: `true`).
   * `:header` - specify header to be used in mappify; as per `mappify`, first row will not be consumed as header
   * `:structs` - bool; use structs instead of array-maps or hash-maps in mappify.
   * `:remove-comments` - bool; remove comment lines, as specified by `:comment-re` or `:comment-char`. Also
@@ -265,17 +266,21 @@
   * `:comment-re` - specify a regular expression to use for commenting out lines.
   * `:comment-char` - specify a comment character to use for filtering out comments; overrides comment-re.
   * `:cast-fns` - optional map of `colname | index -> cast-fn`; row maps will have the values as output by the
-     assigned `cast-fn`."
-  ([{:keys [mappify header remove-comments comment-re comment-char structs cast-fns]
+     assigned `cast-fn`.
+  * `:cast-exception-handler` - If cast-fn raises an exception, this function will be called with args
+    `colname, value`, and the result used as the parse value.
+  * `:cast-only` - Only cast the specified column(s); can be either a single column name, or a vector of them."
+  ([{:keys [mappify keify header remove-comments comment-re comment-char structs cast-fns cast-exception-handler cast-only]
      :or   {mappify         true
+            keify           true
             remove-comments true
             comment-re      #"^\#"}
      :as opts}
     rows]
    (->> rows
         (?>> remove-comments (semantic-csv.core/remove-comments {:comment-re comment-re :comment-char comment-char}))
-        (?>> mappify (semantic-csv.core/mappify {:header header :structs structs}))
-        (?>> cast-fns (cast-with cast-fns))))
+        (?>> mappify (semantic-csv.core/mappify {:keify keify :header header :structs structs}))
+        (?>> cast-fns (cast-with cast-fns {:exception-handler cast-exception-handler :only cast-only}))))
   ; Use all defaults
   ([rows]
    (process {} rows)))
