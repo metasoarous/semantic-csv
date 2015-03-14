@@ -33,8 +33,7 @@
   "# Core API namespace"
   (:require [clojure.java.io :as io]
             [clojure-csv.core :as csv]
-            [semantic-csv.impl.core :as impl]
-            [plumbing.core :as pc :refer [?>>]]))
+            [semantic-csv.impl.core :as impl :refer [?>>]]))
 
 
 ;; To start, require this namespace, `clojure.java.io`, and your favorite CSV parser (e.g.,
