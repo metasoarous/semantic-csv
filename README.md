@@ -54,8 +54,8 @@ This reflects a nice decoupling of grammar and semantics, in an effort to make t
 
 ```clojure
 => (require '[clojure.java.io :as io]
-            '[clojure-csv :as csv]
-            '[semantic-csv :as sc :refer :all])
+            '[clojure-csv.core :as csv]
+            '[semantic-csv.core :as sc :refer :all])
 => (with-open [in-file (io/reader "test/test.csv")]
      (->>
        (csv/parse-csv in-file)
