@@ -60,3 +60,16 @@
     (reduce (row-val-caster cast-fns exception-handler) row cols)))
 
 
+;; The following is ripped off from prismatic/plumbing:
+
+(defmacro ?>>
+  "Conditional double-arrow operation (->> nums (?>> inc-all? (map inc)))"
+  [do-it? & args]
+  `(if ~do-it?
+     (->> ~(last args) ~@(butlast args))
+     ~(last args)))
+
+;; We include it here in lieue of depending on the full library due to dependency conflicts with other
+;; libraries.
+
+
