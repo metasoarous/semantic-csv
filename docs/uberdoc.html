@@ -2865,8 +2865,8 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><link href="styles.css" rel="stylesheet" tyle="text/css" /><title>semantic-csv -- Marginalia</title></head><body><table><tr><td class="docs"><div class="header"><h1 class="project-name"><a href="http://github.com/metasoarous/semantic-csv">semantic-csv</a></h1><h2 class="project-version">0.1.0-alpha2</h2><br /><p>A Clojure library with higher level CSV parsing functionality</p>
-</div><div class="dependencies"><h3>dependencies</h3><table><tr><td class="dep-name">org.clojure/clojure</td><td class="dotted"><hr /></td><td class="dep-version">1.5.1</td></tr><tr><td class="dep-name">clojure-csv/clojure-csv</td><td class="dotted"><hr /></td><td class="dep-version">2.0.1</td></tr><tr><td class="dep-name">prismatic/plumbing</td><td class="dotted"><hr /></td><td class="dep-version">0.3.5</td></tr></table></div></td><td class="codes" style="text-align: center; vertical-align: middle;color: #666;padding-right:20px"><br /><br /><br />(this space intentionally left almost blank)</td></tr><tr><td class="docs"><div class="toc"><a name="toc"><h3>namespaces</h3></a><ul><li><a href="#semantic-csv.core">semantic-csv.core</a></li><li><a href="#semantic-csv.impl.core">semantic-csv.impl.core</a></li></ul></div></td><td class="codes">&nbsp;</td></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#semantic-csv.core" name="semantic-csv.core"><h1 class="project-name">semantic-csv.core</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><h1>Higher level CSV parsing/processing functionality</h1>
+</script><link href="styles.css" rel="stylesheet" tyle="text/css" /><title>semantic-csv -- Marginalia</title></head><body><table><tr><td class="docs"><div class="header"><h1 class="project-name"><a href="http://github.com/metasoarous/semantic-csv">semantic-csv</a></h1><h2 class="project-version">0.1.0-alpha4</h2><br /><p>A Clojure library with higher level CSV parsing functionality</p>
+</div><div class="dependencies"><h3>dependencies</h3><table><tr><td class="dep-name">org.clojure/clojure</td><td class="dotted"><hr /></td><td class="dep-version">1.5.1</td></tr><tr><td class="dep-name">clojure-csv/clojure-csv</td><td class="dotted"><hr /></td><td class="dep-version">2.0.1</td></tr></table></div></td><td class="codes" style="text-align: center; vertical-align: middle;color: #666;padding-right:20px"><br /><br /><br />(this space intentionally left almost blank)</td></tr><tr><td class="docs"><div class="toc"><a name="toc"><h3>namespaces</h3></a><ul><li><a href="#semantic-csv.core">semantic-csv.core</a></li><li><a href="#semantic-csv.impl.core">semantic-csv.impl.core</a></li></ul></div></td><td class="codes">&nbsp;</td></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#semantic-csv.core" name="semantic-csv.core"><h1 class="project-name">semantic-csv.core</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><h1>Higher level CSV parsing/processing functionality</h1>
 
 <p>The two most popular CSV parsing libraries for Clojure presently - <code>clojure/data.csv</code> and <code>clojure-csv</code> -
 concern themselves only with the <em>syntax</em> of CSV;
@@ -2901,8 +2901,7 @@ REPL.</p>
 </td><td class="codes"><pre class="brush: clojure">(ns semantic-csv.core
   (:require [clojure.java.io :as io]
             [clojure-csv.core :as csv]
-            [semantic-csv.impl.core :as impl]
-            [plumbing.core :as pc :refer [?&gt;&gt;]]))</pre></td></tr><tr><td class="docs"><p>To start, require this namespace, <code>clojure.java.io</code>, and your favorite CSV parser (e.g.,
+            [semantic-csv.impl.core :as impl :refer [?&gt;&gt;]]))</pre></td></tr><tr><td class="docs"><p>To start, require this namespace, <code>clojure.java.io</code>, and your favorite CSV parser (e.g.,
 <a href="https://github.com/davidsantiago/clojure-csv">clojure-csv</a> or 
 <a href="https://github.com/clojure/data.csv">clojure/data.csv</a>; we'll mostly be using the former).</p>
 
@@ -2985,9 +2984,9 @@ We can address this with the following function:</p>
   ([rows]
    (remove-comments {:comment-re #&quot;^\#&quot;} rows))
   ([{:keys [comment-re comment-char]} rows]
-   (let [commented? (if comment-re
-                      (partial re-find comment-re)
-                      #(= comment-char (first %)))]
+   (let [commented? (if comment-char
+                      #(= comment-char (first %))
+                      (partial re-find comment-re))]
      (remove
        (fn [row]
          (let [x (first row)]
@@ -3114,26 +3113,31 @@ To meet this need, the following convenience functions are provided:</p>
 
 <ul>
 <li><code>:mappify</code> - bool; transform rows from vectors into maps using <code>mappify</code>.</li>
+<li><code>:keyify</code> - bool; specify whether header/column names should be turned into keywords (default: <code>true</code>).</li>
 <li><code>:header</code> - specify header to be used in mappify; as per <code>mappify</code>, first row will not be consumed as header</li>
 <li><code>:structs</code> - bool; use structs instead of array-maps or hash-maps in mappify.</li>
-<li><code>:comment-re</code> - specify a regular expression to use for commenting out lines, or something falsey
- if filtering out comment lines is not desired.</li>
-<li><code>:remove-empty</code> - also remove empty rows? Defaults to true.</li>
+<li><code>:remove-comments</code> - bool; remove comment lines, as specified by <code>:comment-re</code> or <code>:comment-char</code>. Also
+ removes empty lines. Defaults to <code>true</code>.</li>
+<li><code>:comment-re</code> - specify a regular expression to use for commenting out lines.</li>
+<li><code>:comment-char</code> - specify a comment character to use for filtering out comments; overrides comment-re.</li>
 <li><code>:cast-fns</code> - optional map of <code>colname | index -&gt; cast-fn</code>; row maps will have the values as output by the
  assigned <code>cast-fn</code>.</li>
+<li><code>:cast-exception-handler</code> - If cast-fn raises an exception, this function will be called with args
+<code>colname, value</code>, and the result used as the parse value.</li>
+<li><code>:cast-only</code> - Only cast the specified column(s); can be either a single column name, or a vector of them.</li>
 </ul>
 </td><td class="codes"><pre class="brush: clojure">(defn process
-  ([{:keys [comment-re comment-char mappify header structs remove-empty cast-fns]
-     :or   {comment-re   #&quot;^\#&quot;
-            mappify      true
-            remove-empty true
-            cast-fns     {}}
+  ([{:keys [mappify keify header remove-comments comment-re comment-char structs cast-fns cast-exception-handler cast-only]
+     :or   {mappify         true
+            keify           true
+            remove-comments true
+            comment-re      #&quot;^\#&quot;}
      :as opts}
     rows]
    (-&gt;&gt; rows
-        (?&gt;&gt; comment-re (remove-comments {:comment-re comment-re}))
-        (?&gt;&gt; mappify (semantic-csv.core/mappify {:header header :structs structs}))
-        (?&gt;&gt; cast-fns (cast-with cast-fns))))
+        (?&gt;&gt; remove-comments (semantic-csv.core/remove-comments {:comment-re comment-re :comment-char comment-char}))
+        (?&gt;&gt; mappify (semantic-csv.core/mappify {:keify keify :header header :structs structs}))
+        (?&gt;&gt; cast-fns (cast-with cast-fns {:exception-handler cast-exception-handler :only cast-only}))))
   ; Use all defaults
   ([rows]
    (process {} rows)))</pre></td></tr><tr><td class="docs"><p>Using this function, the code we've been building above is reduced to the following:</p>
@@ -3448,7 +3452,15 @@ or join us in the <a href="https://gitter.im/metasoarous/semantic-csv">dedicated
                  (keys row)
                :else
                  (range (count row)))]
-    (reduce (row-val-caster cast-fns exception-handler) row cols)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a><div id="floating-toc"><ul><li class="floating-toc-li" id="floating-toc_semantic-csv.core">semantic-csv.core</li><li class="floating-toc-li" id="floating-toc_semantic-csv.impl.core">semantic-csv.impl.core</li></ul></div></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
+    (reduce (row-val-caster cast-fns exception-handler) row cols)))</pre></td></tr><tr><td class="docs"><p>The following is ripped off from prismatic/plumbing:</p>
+</td><td class="codes"></td></tr><tr><td class="docs"><p>Conditional double-arrow operation (->> nums (?>> inc-all? (map inc)))</p>
+</td><td class="codes"><pre class="brush: clojure">(defmacro ?&gt;&gt;
+  [do-it? &amp; args]
+  `(if ~do-it?
+     (-&gt;&gt; ~(last args) ~@(butlast args))
+     ~(last args)))</pre></td></tr><tr><td class="docs"><p>We include it here in lieue of depending on the full library due to dependency conflicts with other
+libraries.</p>
+</td><td class="codes"></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a><div id="floating-toc"><ul><li class="floating-toc-li" id="floating-toc_semantic-csv.core">semantic-csv.core</li><li class="floating-toc-li" id="floating-toc_semantic-csv.impl.core">semantic-csv.impl.core</li></ul></div></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
 SyntaxHighlighter.all();
 
 // hackity hack
