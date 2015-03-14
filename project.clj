@@ -1,4 +1,4 @@
-(defproject semantic-csv "0.1.0-alpha3"
+(defproject semantic-csv "0.1.0-alpha4"
   :description "A Clojure library with higher level CSV parsing functionality"
   :url "http://github.com/metasoarous/semantic-csv"
   :plugins [[lein-marginalia "0.8.0"]]

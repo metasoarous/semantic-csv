@@ -1,4 +1,9 @@
 
+## 0.1.0-alpha4
+
+* Removed dependency on `prismatic/plumbing` for `?>>` operator (was causing dependency conflicts in a project).
+* Added `:keyify` control to `process`.
+
 ## 0.1.0-alpha3
 
 * Cleaned up `process` function kw-args.
