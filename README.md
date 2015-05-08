@@ -10,6 +10,9 @@ They take CSV text, transform it into a collection of vectors of string values, 
 Semantic CSV takes the next step by giving you tools for addressing the _semantics_ of your data, helping
 you put it in a form that better reflects what it represents.
 
+See the [introductory blog post](www.metasoarous.com/presenting-semantic-csv/) for more information on the
+design phylosophy.
+
 ## Features
 
 * Absorb header row as a vector of column names, and return remaining rows as maps of `column-name -> row-val`
