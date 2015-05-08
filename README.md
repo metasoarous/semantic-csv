@@ -39,8 +39,8 @@ Assuming you're using Leiningen, just add the following to your dependencies:
 
 [![Clojars Project](http://clojars.org/semantic-csv/latest-version.svg)](http://clojars.org/semantic-csv)
 
-If you'd like to try the latest version (perhaps useful while things are changing frequently), you may want to try using [`lein-git-deps`](https://github.com/tobyhede/lein-git-deps).
-You can do this by adding the following to your `project.clj`:
+If you'd like to use a specific commit, you can also use [`lein-git-deps`](https://github.com/tobyhede/lein-git-deps) to do so by adding the followingto your `project.clj`: 
+
 
     :plugins [[lein-git-deps "0.0.1-SNAPSHOT"]]
     :git-dependencies [["https://github.com/metasoarous/semantic-csv.git"]]
