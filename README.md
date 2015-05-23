@@ -81,7 +81,7 @@ However, some opinionated, but configurable convenience functions are also provi
 And for the truly irreverent... (who don't need _computer_ laziness):
 
 ```clojure
-(slurp-and-process "test/test.csv")
+(slurp-csv "test/test.csv")
 ```
 ### Writing CSV data
 
