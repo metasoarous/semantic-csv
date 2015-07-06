@@ -102,3 +102,59 @@
 ;;         ([results input]
 ;;          (if @fst
 ;;            (rf results)))))))
+
+(defn process
+  "This function wraps together the most frequently used input processing capabilities,
+  controlled by an `opts` hash with opinionated defaults:
+
+  * `:mappify` - bool; transform rows from vectors into maps using `mappify`.
+  * `:keyify` - bool; specify whether header/column names should be turned into keywords (default: `true`).
+  * `:header` - specify header to be used in mappify; as per `mappify`, first row will not be consumed as header
+  * `:structs` - bool; use structs instead of array-maps or hash-maps in mappify.
+  * `:remove-comments` - bool; remove comment lines, as specified by `:comment-re` or `:comment-char`. Also
+     removes empty lines. Defaults to `true`.
+  * `:comment-re` - specify a regular expression to use for commenting out lines.
+  * `:comment-char` - specify a comment character to use for filtering out comments; overrides comment-re.
+  * `:cast-fns` - optional map of `colname | index -> cast-fn`; row maps will have the values as output by the
+     assigned `cast-fn`.
+  * `:cast-exception-handler` - If cast-fn raises an exception, this function will be called with args
+    `colname, value`, and the result used as the parse value.
+  * `:cast-only` - Only cast the specified column(s); can be either a single column name, or a vector of them."
+  ([{:keys [mappify keyify header remove-comments comment-re comment-char structs cast-fns cast-exception-handler cast-only]
+     :or   {mappify         true
+            keyify          true
+            remove-comments true
+            comment-re      #"^\#"}
+     :as opts}]
+   (let [map-fn (when mappify
+                  (if structs
+                    (semantic-csv.transducers/structify {:keyify keyify :header header})
+                    (semantic-csv.transducers/mappify {:keyify keyify :header header}))) ;; use mappify or structify
+         remove-fn (when remove-comments
+                     (semantic-csv.transducers/remove-comments {:comment-re comment-re :comment-char comment-char}))
+         cast-with-fn (when cast-fns
+                        (semantic-csv.transducers/cast-with cast-fns {:exception-handler cast-exception-handler :only cast-only}))
+         ]
+     (apply comp (remove nil? [remove-fn map-fn cast-with-fn]))))
+  ; Use all defaults
+  ([]
+   (process {})))
+
+(defn parse-and-process
+  "This is a convenience function for reading a csv file using `clojure/data.csv` and passing it through `process`
+  with the given set of options (specified _last_ as kw_args, in contrast with our other processing functions).
+  Note that `:parser-opts` can be specified and will be passed along to `clojure-csv/parse-csv`"
+  [csv-readable & {:keys [parser-opts]
+                   :or   {parser-opts {}}
+                   :as   opts}]
+  (let [rest-options (dissoc opts :parser-opts)]
+    (transduce (process rest-options) conj []
+     (impl/apply-kwargs csv/parse-csv csv-readable parser-opts))))
+
+(defn slurp-csv
+  "This convenience function let's you `parse-and-process` csv data given a csv filename. Note that it is _not_
+  lazy, and must read in all data so the file handle can be closed."
+  [csv-filename & {:as opts}]
+  (let [rest-options (dissoc opts :parser-opts)]
+    (with-open [in-file (io/reader csv-filename)]
+       (impl/apply-kwargs parse-and-process in-file opts))))
