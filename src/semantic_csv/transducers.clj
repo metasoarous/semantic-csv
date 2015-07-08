@@ -21,7 +21,7 @@
 (defn mappify
   "Takes a sequence of row vectors, as commonly produced by csv parsing libraries, and returns a sequence of
   maps. By default, the first row vector will be interpreted as a header, and used as the keys for the maps.
-  However, this and other behaviour are customizable via an optional `opts` map with the following options:
+  However, this and other behaviors are customizable via an optional `opts` map with the following options:
 
   * `:keyify` - bool; specify whether header/column names should be turned into keywords (default: `true`).
   * `:header` - specify the header to use for map keys, preventing first row of data from being consumed as header."
@@ -54,7 +54,7 @@
 ;; <br/>
 ;;
 ;; Note that `"# some comment lines..."` was really intended to be left out as a comment.
-;; We can address this with the following function:
+;; We can address this with remove-comments:
 
 
 ;; <br/>
@@ -62,8 +62,8 @@
 
 (defn structify
   "Takes a sequence of row vectors, as commonly produced by csv parsing libraries, and returns a sequence of
-  structs. By default, the first row vector will be interpreted as a header, and used as the keys for the maps.
-  However, this and other behaviour are customizable via an optional `opts` map with the following options:
+  structs. By default, the first row vector will be interpreted as a header, and used as the keys for the structs.
+  However, this and other behaviors are customizable via an optional `opts` map with the following options:
 
   * `:keyify` - bool; specify whether header/column names should be turned into keywords (default: `true`).
   * `:header` - specify the header to use for map keys, preventing first row of data from being consumed as header."
@@ -96,7 +96,7 @@
 ;; <br/>
 ;;
 ;; Note that `"# some comment lines..."` was really intended to be left out as a comment.
-;; We can address this with the following function:
+;; We can address this with remove-comments:
 
 
 ;; <br/>
@@ -168,7 +168,7 @@
           (if except-first
             (if @fst
               (rf results (impl/cast-row cast-fns input :only only :exception-handler exception-handler))  ;; we captured the first already, keep reducing.
-              (do (vreset! fst input) (rf results input))) ;; fst is nil. reset fst and return the results.
+              (do (vreset! fst input) (rf results input)))                                                 ;; fst is nil. reset fst and return the results.
             (rf results (impl/cast-row cast-fns input :only only :exception-handler exception-handler)))))))))
 
 ;; Let's try casting a numeric column using this function:
@@ -224,7 +224,7 @@
   * `:mappify` - bool; transform rows from vectors into maps using `mappify`.
   * `:keyify` - bool; specify whether header/column names should be turned into keywords (default: `true`).
   * `:header` - specify header to be used in mappify; as per `mappify`, first row will not be consumed as header
-  * `:structs` - bool; use structs instead of array-maps or hash-maps in mappify.
+  * `:structs` - bool; use structify insead of mappify
   * `:remove-comments` - bool; remove comment lines, as specified by `:comment-re` or `:comment-char`. Also
      removes empty lines. Defaults to `true`.
   * `:comment-re` - specify a regular expression to use for commenting out lines.
@@ -234,6 +234,7 @@
   * `:cast-exception-handler` - If cast-fn raises an exception, this function will be called with args
     `colname, value`, and the result used as the parse value.
   * `:cast-only` - Only cast the specified column(s); can be either a single column name, or a vector of them."
+  ([] (process {}))
   ([{:keys [mappify keyify header remove-comments comment-re comment-char structs cast-fns cast-exception-handler cast-only]
      :or   {mappify         true
             keyify          true
@@ -241,18 +242,14 @@
             comment-re      #"^\#"}
      :as opts}]
    (let [map-fn (when mappify
-                  (if structs
+                  (if structs ;; use mappify or structify
                     (semantic-csv.transducers/structify {:keyify keyify :header header})
-                    (semantic-csv.transducers/mappify {:keyify keyify :header header}))) ;; use mappify or structify
+                    (semantic-csv.transducers/mappify {:keyify keyify :header header})))
          remove-fn (when remove-comments
                      (semantic-csv.transducers/remove-comments {:comment-re comment-re :comment-char comment-char}))
          cast-with-fn (when cast-fns
-                        (semantic-csv.transducers/cast-with cast-fns {:exception-handler cast-exception-handler :only cast-only}))
-         ]
-     (apply comp (remove nil? [remove-fn map-fn cast-with-fn]))))
-  ; Use all defaults
-  ([]
-   (process {})))
+                        (semantic-csv.transducers/cast-with cast-fns {:exception-handler cast-exception-handler :only cast-only}))]
+     (apply comp (remove nil? [remove-fn map-fn cast-with-fn])))))
 
 ;; Using this function, the code we've been building above is reduced to the following:
 ;;
@@ -306,6 +303,7 @@
 ;;
 ;; These functions can be imported and used in your `:cast-fns` specification.
 ;; They focus on handling some of the mess of dealing with numeric casting.
+;; None of these functions are transducers.
 
 ;; ## ->int
 
@@ -375,7 +373,7 @@
 ;; ## vectorize
 
 (defn vectorize
-  "Take a sequence of maps, and transform them into a sequence of vectors. Options:
+  "Take a sequence of maps, and returns a transducer that transform them into a sequence of vectors. Options:
 
   * `:header` - The header to be used. If not specified, this defaults to `(-> rows first keys)`. Only
     values corresponding to the specified header will be included in the output, and will be included in the
@@ -404,8 +402,7 @@
                      (conj result (mapv format-header @hdr))
                      (conj result @hdr))
                    (mapv (partial get input) @hdr))))
-            (rf result (mapv (partial get input) @hdr)))
-          ))))))
+            (rf result (mapv (partial get input) @hdr)))))))))
 
 
 ;; Let's see this in action:
@@ -434,8 +431,8 @@
 ;; ## batch
 
 (defn batch
-  "Does not return a transducer. Takes sequence of items and returns a
-  sequence of batches of items from the original sequence, at most `n` long."
+  "Takes sequence of items and returns a sequence of batches of items from the original
+  sequence, at most `n` long."
   [n rows]
   (partition n n [] rows))
 
