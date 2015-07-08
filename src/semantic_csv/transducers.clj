@@ -28,7 +28,7 @@
   ([] (mappify {}))
   ([{:keys [keyify header] :or {keyify true} :as opts}]
    (fn [rf]
-     (let [hdr (volatile! header)]
+     (let [hdr (volatile! (mapv keyword header))]
        (fn
          ([] (rf))
          ([results] (rf results))
@@ -389,19 +389,21 @@
   ([{:keys [header prepend-header format-header]
      :or {prepend-header true format-header impl/stringify-keyword}}]
    (fn [rf]
-     (let [hdr (volatile! header)]
+     (let [hdr (volatile! header)
+           prepend-hdr (volatile! prepend-header)]
        (fn
          ([] (rf))
          ([result] (rf result))
          ([result input]
-          (if (empty? @hdr)
-            (do (vreset! hdr (into [] (keys input)))
-                (if prepend-header
-                  (rf
-                   (if format-header
-                     (conj result (mapv format-header @hdr))
-                     (conj result @hdr))
-                   (mapv (partial get input) @hdr))))
+          (when (empty? @hdr)
+            (do (vreset! hdr (into [] (keys input)))))
+          (if @prepend-hdr
+            (do (vreset! prepend-hdr false)
+              (rf
+                 (if format-header
+                   (rf result (mapv format-header @hdr))
+                   (rf result @hdr))
+                 (mapv (partial get input) @hdr)))
             (rf result (mapv (partial get input) @hdr)))))))))
 
 
