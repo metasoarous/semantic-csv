@@ -41,11 +41,9 @@
 ;; Here's an example using the mappify transducers.
 ;;
 ;;     => (with-open [in-file (io/reader "test/test.csv")]
-;;          (transduce
-;;            (mappify)
-;;            conj
-;;            []
-;;            (csv/parse-csv in-file))
+;;          (into []
+;;                (mappify)
+;;                (csv/parse-csv in-file))
 ;;
 ;;     [{:this "# some comment lines..."}
 ;;      {:this "1", :that "2", :more "stuff"}
@@ -83,11 +81,9 @@
 ;; Here's an example of structify:
 ;;
 ;;     => (with-open [in-file (io/reader "test/test.csv")]
-;;          (transduce
-;;            (structify)
-;;            conj
-;;            []
-;;            (csv/parse-csv in-file))
+;;          (into []
+;;                (structify)
+;;                (csv/parse-csv in-file))
 ;;
 ;;     ({:this "# some comment lines..."}
 ;;      {:this "1", :that "2", :more "stuff"}
@@ -130,11 +126,9 @@
 ;; This is a property of transducers.
 ;;
 ;;     => (with-open [in-file (io/reader "test/test.csv")]
-;;          (transduce
-;;            (comp (remove-comments) (mappify))
-;;            conj
-;;            []
-;;            (csv/parse-csv in-file)))
+;;          (into []
+;;                (comp (remove-comments) (mappify))
+;;                (csv/parse-csv in-file)))
 ;;
 ;;     ({:this "1", :that "2", :more "stuff"}
 ;;      {:this "2", :that "3", :more "other yeah"})
@@ -174,14 +168,11 @@
 ;; Let's try casting a numeric column using this function:
 ;;
 ;;     => (with-open [in-file (io/reader "test/test.csv")]
-;;          (transduce
-;;            (comp
-;;              (remove-comments)
-;;              (mappify)
-;;              (cast-with {:this #(Integer/parseInt %)}))
-;;            conj
-;;            []
-;;            (csv/parse-csv in-file)))
+;;          (into []
+;;                (comp (remove-comments)
+;;                      (mappify)
+;;                      (cast-with {:this #(Integer/parseInt %)}))
+;;                (csv/parse-csv in-file)))
 ;;
 ;;     ({:this 1, :that "2", :more "stuff"}
 ;;      {:this 2, :that "3", :more "other yeah"})
@@ -190,14 +181,11 @@
 ;; by passing a single casting function as the first argument.
 ;;
 ;;     => (with-open [in-file (io/reader "test/test.csv")]
-;;          (transduce
-;;            (comp
-;;              (remove-comments)
-;;              (mappify)
-;;              (cast-with #(Integer/parseInt %) {:only [:this :that]}))
-;;            conj
-;;            []
-;;            (csv/parse-csv in-file)))
+;;          (into []
+;;                (comp (remove-comments)
+;;                      (mappify)
+;;                      (cast-with #(Integer/parseInt %) {:only [:this :that]}))
+;;                (csv/parse-csv in-file)))
 ;;
 ;;     ({:this 1, :that 2, :more "stuff"}
 ;;      {:this 2, :that 3, :more "other yeah"})
@@ -254,11 +242,9 @@
 ;; Using this function, the code we've been building above is reduced to the following:
 ;;
 ;;     (with-open [in-file (io/reader "test/test.csv")]
-;;       (transduce
-;;         (process {:cast-fns {:this #(Integer/parseInt %)}})
-;;         conj
-;;         []
-;;         (csv/parse-csv in-file)))
+;;       (into []
+;;             (process {:cast-fns {:this #(Integer/parseInt %)}})
+;;             (csv/parse-csv in-file)))
 
 
 ;; <br/>
@@ -411,7 +397,7 @@
 ;;
 ;;     => (let [data [{:this "a" :that "b"}
 ;;                    {:this "x" :that "y"}]]
-;;          (transduce (vectorize) conj [] data))
+;;          (into [] (vectorize) data))
 ;;     (["this" "that"]
 ;;      ["a" "b"]
 ;;      ["x" "y"])
@@ -420,11 +406,10 @@
 ;;
 ;;     => (let [data [{:this "a" :that "b"}
 ;;                    {:this "x" :that "y"}]]
-;;          (transduce (vectorize {:header [:that :this]
-;;                      :prepend-header false})
-;;                     conj
-;;                     []
-;;                     data))
+;;          (into []
+;;                (vectorize {:header [:that :this]
+;;                           :prepend-header false})
+;;                data))
 ;;     (["b" "a"]
 ;;      ["y" "x"])
 
@@ -514,7 +499,7 @@
 ;;     (with-open [in-file (io/reader "test/test.csv")
 ;;                 out-file (io/writer "test-out.csv")]
 ;;       (->>
-;;         (transduce
+;;         (sequence
 ;;           (comp
 ;;             (remove-comments)
 ;;             (mappify)
@@ -525,8 +510,6 @@
 ;;                 (assoc row :jazz (* (:this row)
 ;;                                     (:that row)))))
 ;;             (vectorize))
-;;           conj
-;;           []
 ;;           (cd-csv/read-csv in-file))
 ;;         (cd-csv/write-csv out-file)))
 ;;
