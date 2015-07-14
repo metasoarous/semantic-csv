@@ -26,7 +26,7 @@
   * `:keyify` - bool; specify whether header/column names should be turned into keywords (default: `true`).
   * `:header` - specify the header to use for map keys, preventing first row of data from being consumed as header."
   ([] (mappify {}))
-  ([{:keys [keyify header] :or {keyify true} :as opts}]
+  ([{:keys [keyify transform-header header] :or {keyify true} :as opts}]
    (fn [rf]
      (let [hdr (volatile! (mapv keyword header))]
        (fn
@@ -34,7 +34,10 @@
          ([results] (rf results))
          ([results input]
           (if (empty? @hdr)
-            (do (vreset! hdr (if keyify (mapv keyword input) input))
+            (do (vreset! hdr (cond
+                               transform-header (mapv transform-header input)
+                               keyify (mapv keyword input)
+                               :else input))
                 results)
             (rf results (impl/mappify-row @hdr input)))))))))
 
@@ -66,7 +69,7 @@
   * `:keyify` - bool; specify whether header/column names should be turned into keywords (default: `true`).
   * `:header` - specify the header to use for map keys, preventing first row of data from being consumed as header."
   ([] (structify {}))
-  ([{:keys [keyify header] :or {keyify true} :as opts}]
+  ([{:keys [keyify transform-header header] :or {keyify true} :as opts}]
    (fn [rf]
      (let [hdr (volatile! header)]
        (fn
@@ -74,7 +77,10 @@
          ([results] (rf results))
          ([results input]
           (if (empty? @hdr)
-            (do (vreset! hdr (if keyify (mapv keyword input) input))
+            (do (vreset! hdr (cond
+                               transform-header (mapv transform-header input)
+                               keyify (mapv keyword input)
+                               :else input))
                 results)
             (rf results (apply struct (apply create-struct @hdr) input)))))))))
 
@@ -258,7 +264,7 @@
                    :or   {parser-opts {}}
                    :as   opts}]
   (let [rest-options (dissoc opts :parser-opts)]
-    (transduce (process rest-options) conj []
+    (into [] (process rest-options)
      (impl/apply-kwargs csv/parse-csv csv-readable parser-opts))))
 
 ;;     (with-open [in-file (io/reader "test/test.csv")]
@@ -470,7 +476,9 @@
      ; Else assume we already have a file handle
      (let [cast-fn (when cast-fns (cast-with cast-fns))
            vect-fn (when (-> rows first map?) (vectorize {:header header :prepend-header prepend-header}))
-           vect-rows (transduce (apply comp (remove nil? [cast-fn vect-fn (cast-with str)])))]
+           vect-rows (sequence
+                      (apply comp (remove nil? [cast-fn vect-fn (cast-with str)]))
+                      rows)]
        (->> vect-rows
             (batch batch-size)
             (map #(impl/apply-kwargs csv/write-csv % writer-opts))
