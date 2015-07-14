@@ -10,8 +10,10 @@
 ;; # Input processing functions
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;; Note that all of these processing functions return a transducer unless otherwise stated.
+;; Implementations of the core api's functions as transducers.
 ;; This allows for single passes accross collections.
+;;
+;; This namespace also contains the helper functions seen in core.
 ;;
 
 
@@ -19,9 +21,9 @@
 ;; ## mappify
 
 (defn mappify
-  "Takes a sequence of row vectors, as commonly produced by csv parsing libraries, and returns a sequence of
-  maps. By default, the first row vector will be interpreted as a header, and used as the keys for the maps.
-  However, this and other behaviors are customizable via an optional `opts` map with the following options:
+  "Takes a set of input options and returns a transducer.  The transducers will use the supplied header,
+  or the first row if :header is nil, to create a map for each row, where the keys for the map are the header values.
+  Options include:
 
   * `:keyify` - bool; specify whether header/column names should be turned into keywords (default: `true`).
   * `:header` - specify the header to use for map keys, preventing first row of data from being consumed as header."
@@ -62,12 +64,12 @@
 ;; ## structify
 
 (defn structify
-  "Takes a sequence of row vectors, as commonly produced by csv parsing libraries, and returns a sequence of
-  structs. By default, the first row vector will be interpreted as a header, and used as the keys for the structs.
-  However, this and other behaviors are customizable via an optional `opts` map with the following options:
+  "Takes a set of input options and returns a transducer.  The transducers will use the supplied header,
+  or the first row if :header is nil, to create a struct for each row, where the keys for the struct are the header values.
+  Options include:
 
   * `:keyify` - bool; specify whether header/column names should be turned into keywords (default: `true`).
-  * `:header` - specify the header to use for map keys, preventing first row of data from being consumed as header."
+  * `:header` - specify the header to use for struct keys, preventing first row of data from being consumed as header."
   ([] (structify {}))
   ([{:keys [keyify transform-header header] :or {keyify true} :as opts}]
    (fn [rf]
@@ -104,9 +106,9 @@
 ;; <br/>
 ;; ## remove-comments
 (defn remove-comments
-  "Removes rows which start with a comment character (by default, `#`). Operates by checking whether
-  the first item of every row in the collection matches a comment pattern. Also removes empty lines.
-  Options include:
+  "Returns a transducers that will remove rows which start with a comment character (by default, `#`).
+  Operates by checking whether the first item of every row in the collection matches a comment pattern.
+  Also removes empty lines. Options include:
 
   * `:comment-re` - Specify a custom regular expression for determining which lines are commented out.
   * `:comment-char` - Checks for lines lines starting with this char.
@@ -148,9 +150,9 @@
 ;; ## cast-with
 
 (defn cast-with
-  "Casts the vals of each row according to `cast-fns`, which must either be a map of
-  `column-name -> casting-fn` or a single casting function to be applied towards all columns.
-  Additionally, an `opts` map can be used to specify:
+  "Returns a transducer that casts the vals of each row according to `cast-fns`, which must either
+  be a map of `column-name -> casting-fn` or a single casting function to be applied towards all columns.
+  Options include:
 
   * `:except-first` - Leaves the first row unaltered; useful for preserving header row.
   * `:exception-handler` - If cast-fn raises an exception, this function will be called with args
@@ -212,8 +214,8 @@
 ;; ## process
 
 (defn process
-  "This function wraps together the most frequently used input processing capabilities,
-  controlled by an `opts` hash with opinionated defaults:
+  "Returns a transducers that composes the most frequently used input processing capabilities,
+  and is controlled by an `opts` hash with opinionated defaults:
 
   * `:mappify` - bool; transform rows from vectors into maps using `mappify`.
   * `:keyify` - bool; specify whether header/column names should be turned into keywords (default: `true`).
@@ -257,7 +259,7 @@
 ;; ## parse-and-process
 
 (defn parse-and-process
-  "This is a convenience function for reading a csv file using `clojure/data.csv` and passing it through `process`
+  "This is a convenience function for reading a csv file using `clojure-csv` and passing it through `process`
   with the given set of options (specified _last_ as kw_args, in contrast with our other processing functions).
   Note that `:parser-opts` can be specified and will be passed along to `clojure-csv/parse-csv`"
   [csv-readable & {:keys [parser-opts]
@@ -365,7 +367,8 @@
 ;; ## vectorize
 
 (defn vectorize
-  "Take a sequence of maps, and returns a transducer that transform them into a sequence of vectors. Options:
+  "Returns a transducer that transforms maps where the keys are headers (as produced by mappify)
+  and transforms them into a sequence of vectors. Options include:
 
   * `:header` - The header to be used. If not specified, this defaults to `(-> rows first keys)`. Only
     values corresponding to the specified header will be included in the output, and will be included in the
