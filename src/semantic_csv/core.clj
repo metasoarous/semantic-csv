@@ -67,19 +67,26 @@
   "Takes a sequence of row vectors, as commonly produced by csv parsing libraries, and returns a sequence of
   maps. By default, the first row vector will be interpreted as a header, and used as the keys for the maps.
   However, this and other behaviour are customizable via an optional `opts` map with the following options:
- 
+
   * `:keyify` - bool; specify whether header/column names should be turned into keywords (default: `true`).
+    If `:transform-header` is present, this option will be ignored.
+  * `:transform-header` - A function that transforms the header/column names for each column.
+    This takes precedence over `keyify` and should be a function that takes a string.
   * `:header` - specify the header to use for map keys, preventing first row of data from being consumed as header.
   * `:structs` - bool; use structs instead of hash-maps or array-maps, for performance boost (default: `false`)."
   ([rows]
    (mappify {} rows))
-  ([{:keys [keyify header structs] :or {keyify true} :as opts}
+  ([{:keys [keyify transform-header header structs] :or {keyify true} :as opts}
     rows]
    (let [consume-header (not header)
          header (if header
                   header
                   (first rows))
-         header (if keyify (mapv keyword header) header)
+         header (if transform-header
+                  (mapv transform-header header)
+                  (if keyify
+                    (mapv keyword header)
+                    header))
          map-fn (if structs
                   (let [s (apply create-struct header)]
                     (partial apply struct s))
@@ -331,6 +338,24 @@
 ;;                :cast-fns {:this #(Integer/parseInt %)})
 
 
+;; <br/>
+;; # A Helper function to use with mappify to replace spaces in headers.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; ## replace-space
+
+(defn replace-space
+  "Takes a string that is used to replace spaces and a bool, that when true, will make a keyword out of the header.
+  When no bool is passed, true is used, and headers will be made into keywords.
+  Returns a function, accepting a single parameter."
+  ([replace-string]
+   (replace-space replace-string true))
+  ([replace-string keyify]
+   (fn [r-string]
+     (let [header (clojure.string/replace r-string \space replace-string)]
+       (if keyify
+         (keyword header)
+         header)))))
 
 ;; <br/>
 ;; # Some casting functions for your convenience
