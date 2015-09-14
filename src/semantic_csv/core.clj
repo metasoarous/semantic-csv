@@ -36,6 +36,9 @@
             [semantic-csv.impl.core :as impl :refer [?>>]]))
 
 
+(declare ->idiomatic-keyword)
+
+
 ;; To start, require this namespace, `clojure.java.io`, and your favorite CSV parser (e.g.,
 ;; [clojure-csv](https://github.com/davidsantiago/clojure-csv) or 
 ;; [clojure/data.csv](https://github.com/clojure/data.csv); we'll mostly be using the former).
@@ -85,7 +88,7 @@
          header (if transform-header
                   (mapv transform-header header)
                   (if keyify
-                    (mapv keyword header)
+                    (mapv ->idiomatic-keyword header)
                     header))
          map-fn (if structs
                   (let [s (apply create-struct header)]
@@ -342,20 +345,13 @@
 ;; # A Helper function to use with mappify to replace spaces in headers.
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; ## replace-space
+;; ## ->idiomatic-keyword
 
-(defn replace-space
-  "Takes a string that is used to replace spaces and a bool, that when true, will make a keyword out of the header.
-  When no bool is passed, true is used, and headers will be made into keywords.
-  Returns a function, accepting a single parameter."
-  ([replace-string]
-   (replace-space replace-string true))
-  ([replace-string keyify]
-   (fn [r-string]
-     (let [header (clojure.string/replace r-string \space replace-string)]
-       (if keyify
-         (keyword header)
-         header)))))
+(defn ->idiomatic-keyword
+  "Takes a string, replacing consecutive underscores and spaces with a single dash(-),
+  then returns a keyword based on the transformed string."
+  [x]
+  (-> x (clojure.string/replace #"[ _]+" "-") clojure.string/lower-case keyword))
 
 ;; <br/>
 ;; # Some casting functions for your convenience
