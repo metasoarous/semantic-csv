@@ -36,9 +36,6 @@
             [semantic-csv.impl.core :as impl :refer [?>>]]))
 
 
-(declare ->idiomatic-keyword)
-
-
 ;; To start, require this namespace, `clojure.java.io`, and your favorite CSV parser (e.g.,
 ;; [clojure-csv](https://github.com/davidsantiago/clojure-csv) or 
 ;; [clojure/data.csv](https://github.com/clojure/data.csv); we'll mostly be using the former).
@@ -85,11 +82,10 @@
          header (if header
                   header
                   (first rows))
-         header (if transform-header
-                  (mapv transform-header header)
-                  (if keyify
-                    (mapv ->idiomatic-keyword header)
-                    header))
+         header (cond
+                  transform-header (mapv transform-header header)
+                  keyify (mapv keyword header)
+                  :else header)
          map-fn (if structs
                   (let [s (apply create-struct header)]
                     (partial apply struct s))

@@ -22,10 +22,7 @@
              {:foo "this" :bar "that"})))
     (testing ":tranform-header overrides the :keyify option"
       (is (= (first (mappify {:transform-header identity :keyify true} data))
-             {"this" "x" "that" "y"})))
-    (testing ":keyify uses ->idiomatic-keyword by default"
-      (is (= (first (mappify {:header ["foo header" "bar_header"]} data))
-             {:foo-header "this" :bar-header "that"})))))
+             {"this" "x" "that" "y"})))))
 
 
 (deftest structify-test
