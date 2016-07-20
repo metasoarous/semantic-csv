@@ -119,15 +119,21 @@
 (deftest casting-function-helpers-test
   (testing "with string inputs"
     (let [n "3443"
-          x "4.555"]
+          x "4.555"
+          trues ["yes" "true" "t" "True"]
+          falses ["no" "false" "f" "FALSE"]]
       (is (= (->int n) 3443))
       (is (= (->long n) 3443))
       (is (= (->float x) (float 4.555)))
-      (is (= (->double x) 4.555))))
+      (is (= (->double x) 4.555))
+      (is (every? true? (map ->boolean trues)))
+      (is (every? false? (map ->boolean falses)))))
   (testing "with numeric inputs"
     (doseq [x [3443 4.555]]
       (is (= (->double x) (double x)))
-      (is (= (->float x) (float x))))
+      (is (= (->float x) (float x)))
+      (is (false? (->boolean 0)))
+      (is (true? (->boolean 1))))
     (doseq [x [3443 4.555]
             f [->int ->long]]
       (is (= (f x) (long x)))))

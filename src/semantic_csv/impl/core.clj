@@ -1,5 +1,6 @@
 (ns semantic-csv.impl.core
-  "This namespace consists of implementation details for the main API")
+  "This namespace consists of implementation details for the main API"
+  (:require [clojure.string :as s]))
 
 
 (defn mappify-row
@@ -58,6 +59,16 @@
                :else
                  (range (count row)))]
     (reduce (row-val-caster cast-fns exception-handler) row cols)))
+
+(defn ->number
+  "Convert value to number."
+  ([str-cast-fn number-cast-fn x]
+   (->number str-cast-fn number-cast-fn {} x))
+  ([str-cast-fn number-cast-fn {:keys [nil-fill]} x]
+   (cond
+     (and (string? x) (not (s/blank? x))) (-> x s/trim str-cast-fn)
+     (number? x) (number-cast-fn x)
+     :else nil-fill)))
 
 
 ;; The following is ripped off from prismatic/plumbing:

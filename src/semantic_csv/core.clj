@@ -341,41 +341,62 @@
 
 ;; ## ->int
 
-(defn ->int
+(def ->int
   "Translate to int from string or other numeric. If string represents a non integer value,
-  it will be rounded down to the nearest int."
-  [v]
-  (if (string? v)
-    (-> v clojure.string/trim Double/parseDouble int)
-    (int v)))
+  it will be rounded down to the nearest int.
+
+  An opts map can be specified as the first arguments with the following options:
+  * `:nil-fill` - return this when input is empty/nil.
+ "
+  (partial impl/->number #(int (Double/parseDouble %)) int))
 
 ;; ## ->long
 
-(defn ->long
+(def ->long
   "Translate to long from string or other numeric. If string represents a non integer value,
-  will be rounded down to the nearest long."
-  [v]
-  (if (string? v)
-    (-> v clojure.string/trim Double/parseDouble long)
-    (long v)))
+  will be rounded down to the nearest long.
+
+  An opts map can be specified as the first arguments with the following options:
+  * `:nil-fill` - return this when input is empty/nil."
+  (partial impl/->number #(long (Double/parseDouble %)) long))
 
 ;; ## ->float
 
-(defn ->float
-  "Translate to float from string or other numeric."
-  [v]
-  (if (string? v)
-    (-> v clojure.string/trim Float/parseFloat)
-    (float v)))
+(def ->float
+  "Translate to float from string or other numeric.
+
+  An opts map can be specified as the first arguments with the following options:
+  * `:nil-fill` - return this when input is empty/nil."
+  (partial impl/->number #(Float/parseFloat %) float))
 
 ;; ## ->double
 
-(defn ->double
-  "Translate to double from string or other numeric."
-  [v]
-  (if (string? v)
-    (-> v clojure.string/trim Double/parseDouble)
-    (double v)))
+(def ->double
+  "Translate to double from string or other numeric.
+
+  An opts map can be specified as the first arguments with the following options:
+  * `:nil-fill` - return this when input is empty/nil."
+  (partial impl/->number #(Double/parseDouble %) double))
+
+;; ## ->boolean
+
+(defn ->boolean
+  "Translate to boolean from string or other numeric.
+
+  An opts map can be specified as the first arguments with the following options:
+  * `:nil-fill` - return this when input is empty/nil."
+  ([x]
+   (->boolean {} x))
+  ([{:keys [nil-fill]} x]
+   (cond
+     (string? x) (case (-> x clojure.string/trim clojure.string/lower-case)
+                   ("true" "yes" "t") true
+                   ("false" "no" "f") false
+                   "" nil-fill)
+     (number? x) (not (zero? x))
+     (nil? x) nil-fill
+     :else (boolean x))))
+
 
 ;;     (slurp-csv "test/test.csv"
 ;;                :cast-fns {:this ->int})
