@@ -137,6 +137,8 @@
     (doseq [x [3443 4.555]
             f [->int ->long]]
       (is (= (f x) (long x)))))
+  (testing "with nil-fill"
+    (is (= (->double {:nil-fill 0.0} "") 0.0)))
   (testing "with string inputs containing spaces on the ends"
     (doseq [f [->int ->long ->float ->double]]
       (is (f " 3454 "))))
