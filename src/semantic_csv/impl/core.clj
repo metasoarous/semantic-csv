@@ -60,16 +60,9 @@
                  (range (count row)))]
     (reduce (row-val-caster cast-fns exception-handler) row cols)))
 
-(defn ->number
-  "Convert value to number."
-  ([str-cast-fn number-cast-fn x]
-   (->number str-cast-fn number-cast-fn {} x))
-  ([str-cast-fn number-cast-fn {:keys [nil-fill]} x]
-   (cond
-     (and (string? x) (not (s/blank? x))) (-> x s/trim str-cast-fn)
-     (number? x) (number-cast-fn x)
-     :else nil-fill)))
-
+(def not-blank?
+  "Check if value is a non-blank string."
+  (every-pred string? (complement s/blank?)))
 
 ;; The following is ripped off from prismatic/plumbing:
 

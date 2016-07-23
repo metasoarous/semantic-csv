@@ -32,6 +32,7 @@
 (ns semantic-csv.core
   "# Core API namespace"
   (:require [clojure.java.io :as io]
+            [clojure.string :as s]
             [clojure-csv.core :as csv]
             [semantic-csv.impl.core :as impl :refer [?>>]]))
 
@@ -341,42 +342,65 @@
 
 ;; ## ->int
 
-(def ->int
+(defn ->int
   "Translate to int from string or other numeric. If string represents a non integer value,
   it will be rounded down to the nearest int.
 
   An opts map can be specified as the first arguments with the following options:
-  * `:nil-fill` - return this when input is empty/nil.
- "
-  (partial impl/->number #(int (Double/parseDouble %)) int))
+  * `:nil-fill` - return this when input is empty/nil."
+  ([x]
+   (->int {} x))
+  ([{:keys [nil-fill]} x]
+   (cond
+     (impl/not-blank? x) (-> x s/trim Double/parseDouble int)
+     (number? x) (int x)
+     :else nil-fill)))
 
 ;; ## ->long
 
-(def ->long
+(defn ->long
   "Translate to long from string or other numeric. If string represents a non integer value,
   will be rounded down to the nearest long.
 
   An opts map can be specified as the first arguments with the following options:
   * `:nil-fill` - return this when input is empty/nil."
-  (partial impl/->number #(long (Double/parseDouble %)) long))
+  ([x]
+   (->long {} x))
+  ([{:keys [nil-fill]} x]
+   (cond
+     (impl/not-blank? x) (-> x s/trim Double/parseDouble long)
+     (number? x) (long x)
+     :else nil-fill)))
 
 ;; ## ->float
 
-(def ->float
+(defn ->float
   "Translate to float from string or other numeric.
 
   An opts map can be specified as the first arguments with the following options:
   * `:nil-fill` - return this when input is empty/nil."
-  (partial impl/->number #(Float/parseFloat %) float))
+  ([x]
+   (->float {} x))
+  ([{:keys [nil-fill]} x]
+   (cond
+     (impl/not-blank? x) (-> x s/trim Float/parseFloat)
+     (number? x) (float x)
+     :else nil-fill)))
 
 ;; ## ->double
 
-(def ->double
+(defn ->double
   "Translate to double from string or other numeric.
 
   An opts map can be specified as the first arguments with the following options:
   * `:nil-fill` - return this when input is empty/nil."
-  (partial impl/->number #(Double/parseDouble %) double))
+  ([x]
+   (->double {} x))
+  ([{:keys [nil-fill]} x]
+   (cond
+     (impl/not-blank? x) (-> x s/trim Double/parseDouble)
+     (number? x) (double x)
+     :else nil-fill)))
 
 ;; ## ->boolean
 
@@ -389,7 +413,7 @@
    (->boolean {} x))
   ([{:keys [nil-fill]} x]
    (cond
-     (string? x) (case (-> x clojure.string/trim clojure.string/lower-case)
+     (string? x) (case (-> x s/trim s/lower-case)
                    ("true" "yes" "t") true
                    ("false" "no" "f") false
                    "" nil-fill)
