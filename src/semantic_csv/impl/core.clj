@@ -57,7 +57,11 @@
                  (keys row)
                :else
                  (range (count row)))]
-    (reduce (row-val-caster cast-fns exception-handler) row cols)))
+    (reduce (row-val-caster cast-fns exception-handler)
+            (if (seq? row)
+              (vec row)
+              row)
+            cols)))
 
 
 ;; The following is ripped off from prismatic/plumbing:
