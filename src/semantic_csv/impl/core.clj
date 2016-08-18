@@ -58,7 +58,11 @@
                  (keys row)
                :else
                  (range (count row)))]
-    (reduce (row-val-caster cast-fns exception-handler) row cols)))
+    (reduce (row-val-caster cast-fns exception-handler)
+            (if (seq? row)
+              (vec row)
+              row)
+            cols)))
 
 (def not-blank?
   "Check if value is a non-blank string."
