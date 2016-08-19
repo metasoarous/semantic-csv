@@ -552,20 +552,20 @@
      (with-open [file-handle (io/writer file)]
        (spit-csv file-handle opts rows))
      ; Else assume we already have a file handle
-     (->> rows
-          (?>> cast-fns (cast-with cast-fns))
-          (?>> (-> rows first map?)
-               (vectorize {:header header
-                           :prepend-header prepend-header}))
-          ; For safe measure
-          (cast-with str)
-          (batch batch-size)
-          (map #(impl/apply-kwargs csv/write-csv % writer-opts))
-          (reduce
-            (fn [w rowstr]
-              (.write w rowstr)
-              w)
-            file)))))
+     (let [vectorize? (-> rows first map?)]
+       (reduce (fn [[w prepend-header] batch]
+                 [(->> batch
+                       (?>> cast-fns (cast-with cast-fns))
+                       (?>> vectorize?
+                            (vectorize {:header header
+                                        :prepend-header prepend-header}))
+                       ; For safe measure
+                       (cast-with str)
+                       (impl/write-rows w writer-opts))
+                  false])
+               [file prepend-header]
+               (batch batch-size rows))))))
+
 
 ;; Note that since we use `clojure-csv` here, we offer a `:batch-size` option that lets you format and write small
 ;; batches of rows out at a time, to avoid constructing a massive string representation of all the data in the

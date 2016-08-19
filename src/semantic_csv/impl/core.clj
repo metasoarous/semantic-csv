@@ -1,6 +1,7 @@
 (ns semantic-csv.impl.core
   "This namespace consists of implementation details for the main API"
-  (:require [clojure.string :as s]))
+  (:require [clojure.string :as s]
+            [clojure-csv.core :as csv]))
 
 
 (defn mappify-row
@@ -64,9 +65,18 @@
               row)
             cols)))
 
+
 (def not-blank?
   "Check if value is a non-blank string."
   (every-pred string? (complement s/blank?)))
+
+
+(defn write-rows
+  "Serialize `rows` with `clojure-csv.core/write-csv`, write them to `file` and return it."
+  [file writer-opts rows]
+  (.write file (apply-kwargs csv/write-csv rows writer-opts))
+  file)
+
 
 ;; The following is ripped off from prismatic/plumbing:
 
