@@ -19,7 +19,10 @@
              {:this "# some comment"})))
     (testing "mappify should not consume header if :header is specified"
       (is (= (first (mappify {:header ["foo" "bar"]} data))
-             {:foo "this" :bar "that"})))))
+             {:foo "this" :bar "that"})))
+    (testing ":tranform-header overrides the :keyify option"
+      (is (= (first (mappify {:transform-header identity :keyify true} data))
+             {"this" "x" "that" "y"})))))
 
 
 (deftest structify-test
