@@ -19,7 +19,15 @@
              {:this "# some comment"})))
     (testing "mappify should not consume header if :header is specified"
       (is (= (first (mappify {:header ["foo" "bar"]} data))
-             {:foo "this" :bar "that"})))))
+             {:foo "this" :bar "that"})))
+    (testing "mappify doesn't modify the headers if the fn returns nil"
+      (is (= (first (mappify {:transform-header (fn [_] nil)} data))
+             {:this "x" :that "y"})))
+    (testing "passing lower-case to transform-header correctly modifies the headers"
+      (is (= (->> [["THIS" "That" "more"] ["x" "y" "z"]]
+                  (mappify {:transform-header clojure.string/lower-case})
+                  first)
+             {:this "x" :that "y" :more "z"})))))
 
 
 (deftest structify-test

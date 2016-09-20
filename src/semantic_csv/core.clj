@@ -70,15 +70,21 @@
  
   * `:keyify` - bool; specify whether header/column names should be turned into keywords (default: `true`).
   * `:header` - specify the header to use for map keys, preventing first row of data from being consumed as header.
-  * `:structs` - bool; use structs instead of hash-maps or array-maps, for performance boost (default: `false`)."
+  * `:structs` - bool; use structs instead of hash-maps or array-maps, for performance boost (default: `false`).
+  * `:transform-header` - specify a function to map over each header. If the function returns `nil` the header will remain unmodified."
   ([rows]
    (mappify {} rows))
-  ([{:keys [keyify header structs] :or {keyify true} :as opts}
+  ([{:keys [keyify header structs transform-header] :or {keyify true} :as opts}
     rows]
    (let [consume-header (not header)
          header (if header
                   header
                   (first rows))
+         header (if transform-header
+                  (map
+                    #(if-let [trans (transform-header %)] trans %)
+                    header)
+                  header)
          header (if keyify (mapv keyword header) header)
          map-fn (if structs
                   (let [s (apply create-struct header)]
