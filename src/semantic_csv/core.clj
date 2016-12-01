@@ -235,7 +235,7 @@
         (let [first-row# (first rows#)
               rest-rows# (rest rows#)]
           (cons first-row# (->> rest-rows# ~@forms))))
-        ~data)))
+      ~data)))
 
 ;; This macro generalizes the `:except-first` option of the `cast-with` function for arbitrary processing,
 ;; operating on every row _except_ for the first.
