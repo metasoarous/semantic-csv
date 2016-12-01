@@ -1,5 +1,6 @@
 (ns semantic-csv.impl.core
-  "This namespace consists of implementation details for the main API")
+  "This namespace consists of implementation details for the main API"
+  (:require [clojure.string :as s]))
 
 
 (defn mappify-row
@@ -57,8 +58,15 @@
                  (keys row)
                :else
                  (range (count row)))]
-    (reduce (row-val-caster cast-fns exception-handler) row cols)))
+    (reduce (row-val-caster cast-fns exception-handler)
+            (if (seq? row)
+              (vec row)
+              row)
+            cols)))
 
+(def not-blank?
+  "Check if value is a non-blank string."
+  (every-pred string? (complement s/blank?)))
 
 ;; The following is ripped off from prismatic/plumbing:
 

@@ -32,6 +32,7 @@
 (ns semantic-csv.core
   "# Core API namespace"
   (:require [clojure.java.io :as io]
+            [clojure.string :as s]
             [clojure-csv.core :as csv]
             [semantic-csv.impl.core :as impl :refer [?>>]]))
 
@@ -67,19 +68,25 @@
   "Takes a sequence of row vectors, as commonly produced by csv parsing libraries, and returns a sequence of
   maps. By default, the first row vector will be interpreted as a header, and used as the keys for the maps.
   However, this and other behaviour are customizable via an optional `opts` map with the following options:
- 
+
   * `:keyify` - bool; specify whether header/column names should be turned into keywords (default: `true`).
+    If `:transform-header` is present, this option will be ignored.
+  * `:transform-header` - A function that transforms the header/column names for each column.
+    This takes precedence over `keyify` and should be a function that takes a string.
   * `:header` - specify the header to use for map keys, preventing first row of data from being consumed as header.
   * `:structs` - bool; use structs instead of hash-maps or array-maps, for performance boost (default: `false`)."
   ([rows]
    (mappify {} rows))
-  ([{:keys [keyify header structs] :or {keyify true} :as opts}
+  ([{:keys [keyify transform-header header structs] :or {keyify true} :as opts}
     rows]
    (let [consume-header (not header)
          header (if header
                   header
                   (first rows))
-         header (if keyify (mapv keyword header) header)
+         header (cond
+                  transform-header (mapv transform-header header)
+                  keyify (mapv keyword header)
+                  :else header)
          map-fn (if structs
                   (let [s (apply create-struct header)]
                     (partial apply struct s))
@@ -228,7 +235,7 @@
         (let [first-row# (first rows#)
               rest-rows# (rest rows#)]
           (cons first-row# (->> rest-rows# ~@forms))))
-        ~data)))
+      ~data)))
 
 ;; This macro generalizes the `:except-first` option of the `cast-with` function for arbitrary processing,
 ;; operating on every row _except_ for the first.
@@ -331,6 +338,17 @@
 ;;                :cast-fns {:this #(Integer/parseInt %)})
 
 
+;; <br/>
+;; # A Helper function to use with mappify to replace spaces in headers.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; ## ->idiomatic-keyword
+
+(defn ->idiomatic-keyword
+  "Takes a string, replacing consecutive underscores and spaces with a single dash(-),
+  then returns a keyword based on the transformed string."
+  [x]
+  (-> x (clojure.string/replace #"[ _]+" "-") clojure.string/lower-case keyword))
 
 ;; <br/>
 ;; # Some casting functions for your convenience
@@ -343,39 +361,83 @@
 
 (defn ->int
   "Translate to int from string or other numeric. If string represents a non integer value,
-  it will be rounded down to the nearest int."
-  [v]
-  (if (string? v)
-    (-> v clojure.string/trim Double/parseDouble int)
-    (int v)))
+  it will be rounded down to the nearest int.
+
+  An opts map can be specified as the first arguments with the following options:
+  * `:nil-fill` - return this when input is empty/nil."
+  ([x]
+   (->int {} x))
+  ([{:keys [nil-fill]} x]
+   (cond
+     (impl/not-blank? x) (-> x s/trim Double/parseDouble int)
+     (number? x) (int x)
+     :else nil-fill)))
 
 ;; ## ->long
 
 (defn ->long
   "Translate to long from string or other numeric. If string represents a non integer value,
-  will be rounded down to the nearest long."
-  [v]
-  (if (string? v)
-    (-> v clojure.string/trim Double/parseDouble long)
-    (long v)))
+  will be rounded down to the nearest long.
+
+  An opts map can be specified as the first arguments with the following options:
+  * `:nil-fill` - return this when input is empty/nil."
+  ([x]
+   (->long {} x))
+  ([{:keys [nil-fill]} x]
+   (cond
+     (impl/not-blank? x) (-> x s/trim Double/parseDouble long)
+     (number? x) (long x)
+     :else nil-fill)))
 
 ;; ## ->float
 
 (defn ->float
-  "Translate to float from string or other numeric."
-  [v]
-  (if (string? v)
-    (-> v clojure.string/trim Float/parseFloat)
-    (float v)))
+  "Translate to float from string or other numeric.
+
+  An opts map can be specified as the first arguments with the following options:
+  * `:nil-fill` - return this when input is empty/nil."
+  ([x]
+   (->float {} x))
+  ([{:keys [nil-fill]} x]
+   (cond
+     (impl/not-blank? x) (-> x s/trim Float/parseFloat)
+     (number? x) (float x)
+     :else nil-fill)))
 
 ;; ## ->double
 
 (defn ->double
-  "Translate to double from string or other numeric."
-  [v]
-  (if (string? v)
-    (-> v clojure.string/trim Double/parseDouble)
-    (double v)))
+  "Translate to double from string or other numeric.
+
+  An opts map can be specified as the first arguments with the following options:
+  * `:nil-fill` - return this when input is empty/nil."
+  ([x]
+   (->double {} x))
+  ([{:keys [nil-fill]} x]
+   (cond
+     (impl/not-blank? x) (-> x s/trim Double/parseDouble)
+     (number? x) (double x)
+     :else nil-fill)))
+
+;; ## ->boolean
+
+(defn ->boolean
+  "Translate to boolean from string or other numeric.
+
+  An opts map can be specified as the first arguments with the following options:
+  * `:nil-fill` - return this when input is empty/nil."
+  ([x]
+   (->boolean {} x))
+  ([{:keys [nil-fill]} x]
+   (cond
+     (string? x) (case (-> x s/trim s/lower-case)
+                   ("true" "yes" "t") true
+                   ("false" "no" "f") false
+                   "" nil-fill)
+     (number? x) (not (zero? x))
+     (nil? x) nil-fill
+     :else (boolean x))))
+
 
 ;;     (slurp-csv "test/test.csv"
 ;;                :cast-fns {:this ->int})
