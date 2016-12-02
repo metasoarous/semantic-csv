@@ -34,13 +34,14 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as s]
             [clojure-csv.core :as csv]
-            [semantic-csv.impl.core :as impl :refer [?>>]]))
+            [semantic-csv.impl.core :as impl]
+            [semantic-csv.transducers :as td]))
 
 
 ;; To start, require this namespace, `clojure.java.io`, and your favorite CSV parser (e.g.,
-;; [clojure-csv](https://github.com/davidsantiago/clojure-csv) or 
+;; [clojure-csv](https://github.com/davidsantiago/clojure-csv) or
 ;; [clojure/data.csv](https://github.com/clojure/data.csv); we'll mostly be using the former).
-;; 
+;;
 ;;     (require '[semantic-csv.core :refer :all]
 ;;              '[clojure-csv.core :as csv]
 ;;              '[clojure.java.io :as io])
@@ -79,22 +80,10 @@
    (mappify {} rows))
   ([{:keys [keyify transform-header header structs] :or {keyify true} :as opts}
     rows]
-   (let [consume-header (not header)
-         header (if header
-                  header
-                  (first rows))
-         header (cond
-                  transform-header (mapv transform-header header)
-                  keyify (mapv keyword header)
-                  :else header)
-         map-fn (if structs
-                  (let [s (apply create-struct header)]
-                    (partial apply struct s))
-                  (partial impl/mappify-row header))]
-     (map map-fn
-          (if consume-header
-            (rest rows)
-            rows)))))
+   (let [xform (if structs
+                 (td/structify opts)
+                 (td/mappify opts))]
+     (sequence xform rows))))
 
 ;; Here's an example to whet our whistle:
 ;;
@@ -121,23 +110,15 @@
   "Removes rows which start with a comment character (by default, `#`). Operates by checking whether
   the first item of every row in the collection matches a comment pattern. Also removes empty lines.
   Options include:
-  
+
   * `:comment-re` - Specify a custom regular expression for determining which lines are commented out.
   * `:comment-char` - Checks for lines lines starting with this char.
-  
+
   Note: this function only works with rows that are vectors, and so should always be used before mappify."
   ([rows]
    (remove-comments {:comment-re #"^\#"} rows))
-  ([{:keys [comment-re comment-char]} rows]
-   (let [commented? (if comment-char
-                      #(= comment-char (first %))
-                      (partial re-find comment-re))]
-     (remove
-       (fn [row]
-         (let [x (first row)]
-           (when x
-             (commented? x))))
-       rows))))
+  ([opts rows]
+   (sequence (td/remove-comments opts) rows)))
 
 ;; Let's see this in action with the same data we looked at in the last example:
 ;;
@@ -166,18 +147,15 @@
   "Casts the vals of each row according to `cast-fns`, which must either be a map of
   `column-name -> casting-fn` or a single casting function to be applied towards all columns.
   Additionally, an `opts` map can be used to specify:
-  
+
   * `:except-first` - Leaves the first row unaltered; useful for preserving header row.
   * `:exception-handler` - If cast-fn raises an exception, this function will be called with args
     `colname, value`, and the result used as the parse value.
   * `:only` - Only cast the specified column(s); can be either a single column name, or a vector of them."
   ([cast-fns rows]
    (cast-with cast-fns {} rows))
-  ([cast-fns {:keys [except-first exception-handler only] :as opts} rows]
-   (->> rows
-        (?>> except-first (drop 1))
-        (map #(impl/cast-row cast-fns % :only only :exception-handler exception-handler))
-        (?>> except-first (cons (first rows))))))
+  ([cast-fns opts rows]
+   (sequence (td/cast-with cast-fns opts) rows)))
 
 ;; Let's try casting a numeric column using this function:
 ;;
@@ -194,7 +172,7 @@
 ;;
 ;; Alternatively, if we want to cast multiple columns using a single function, we can do so
 ;; by passing a single casting function as the first argument.
-;; 
+;;
 ;;     => (with-open [in-file (io/reader "test/test.csv")]
 ;;          (->>
 ;;            (csv/parse-csv in-file)
@@ -209,7 +187,7 @@
 ;; Note that this function handles either map or vector rows.
 ;; In particular, if you’ve imported data without consuming a header (by either not using mappify or
 ;; by passing `:header false` to `process` or `slurp-csv` below), then the columns can be keyed by their
-;; zero-based index. 
+;; zero-based index.
 ;; For instance, `(cast-with {0 #(Integer/parseInt %) 1 #(Double/parseDouble %)} rows)`
 ;; will parse the first column as integers and the second as doubles.
 ;;
@@ -276,17 +254,8 @@
   * `:cast-exception-handler` - If cast-fn raises an exception, this function will be called with args
     `colname, value`, and the result used as the parse value.
   * `:cast-only` - Only cast the specified column(s); can be either a single column name, or a vector of them."
-  ([{:keys [mappify keify header remove-comments comment-re comment-char structs cast-fns cast-exception-handler cast-only]
-     :or   {mappify         true
-            keify           true
-            remove-comments true
-            comment-re      #"^\#"}
-     :as opts}
-    rows]
-   (->> rows
-        (?>> remove-comments (semantic-csv.core/remove-comments {:comment-re comment-re :comment-char comment-char}))
-        (?>> mappify (semantic-csv.core/mappify {:keify keify :header header :structs structs}))
-        (?>> cast-fns (cast-with cast-fns {:exception-handler cast-exception-handler :only cast-only}))))
+  ([opts rows]
+   (sequence (td/process opts) rows))
   ; Use all defaults
   ([rows]
    (process {} rows)))
@@ -310,9 +279,8 @@
                    :or   {parser-opts {}}
                    :as   opts}]
   (let [rest-options (dissoc opts :parser-opts)]
-    (process
-      rest-options
-      (impl/apply-kwargs csv/parse-csv csv-readable parser-opts))))
+    (sequence (td/process rest-options)
+              (impl/apply-kwargs csv/parse-csv csv-readable parser-opts))))
 
 ;;     (with-open [in-file (io/reader "test/test.csv")]
 ;;       (doall
@@ -482,18 +450,10 @@
     leave the header unaltered in the output."
   ([rows]
    (vectorize {} rows))
-  ([{:keys [header prepend-header format-header]
-     :or {prepend-header true format-header impl/stringify-keyword}}
-    rows]
+  ([opts rows]
    ;; Grab the specified header, or the keys from the first row. We'll
    ;; use these to `get` the appropriate values for each row.
-   (let [header     (or header (-> rows first keys))
-         ;; This will be the formatted version we prepend if desired
-         out-header (if format-header (mapv format-header header) header)]
-     (->> rows
-          (map
-            (fn [row] (mapv (partial get row) header)))
-          (?>> prepend-header (cons out-header))))))
+   (sequence (td/vectorize opts) rows)))
 
 
 ;; Let's see this in action:
@@ -560,29 +520,8 @@
   * `:prepend-header` - Should the header be prepended to the rows written if `vectorize` is called?"
   ([file rows]
    (spit-csv file {} rows))
-  ([file
-    {:keys [batch-size cast-fns writer-opts header prepend-header]
-     :or   {batch-size 20 prepend-header true}
-     :as   opts}
-    rows]
-   (if (string? file)
-     (with-open [file-handle (io/writer file)]
-       (spit-csv file-handle opts rows))
-     ; Else assume we already have a file handle
-     (->> rows
-          (?>> cast-fns (cast-with cast-fns))
-          (?>> (-> rows first map?)
-               (vectorize {:header header
-                           :prepend-header prepend-header}))
-          ; For safe measure
-          (cast-with str)
-          (batch batch-size)
-          (map #(impl/apply-kwargs csv/write-csv % writer-opts))
-          (reduce
-            (fn [w rowstr]
-              (.write w rowstr)
-              w)
-            file)))))
+  ([file opts rows]
+   (td/spit-csv file opts rows)))
 
 ;; Note that since we use `clojure-csv` here, we offer a `:batch-size` option that lets you format and write small
 ;; batches of rows out at a time, to avoid constructing a massive string representation of all the data in the
