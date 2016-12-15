@@ -58,13 +58,14 @@ This reflects a nice decoupling of grammar and semantics, in an effort to make t
 ```clojure
 => (require '[clojure.java.io :as io]
             '[clojure-csv.core :as csv]
-            '[semantic-csv.core :as sc :refer :all])
+            '[semantic-csv.core :as sc])
+            
 => (with-open [in-file (io/reader "test/test.csv")]
      (->>
        (csv/parse-csv in-file)
-       remove-comments
-       mappify
-       (cast-with {:this ->int})
+       (sc/remove-comments)
+       (sc/mappify)
+       (sc/cast-with {:this ->int})
        doall))
 
 ({:this 1, :that "2", :more "stuff"}
@@ -76,12 +77,12 @@ However, some opinionated, but configurable convenience functions are also provi
 ```clojure
 (with-open [in-file (io/reader "test/test.csv")]
   (doall
-    (process (parse-csv in-file))))
+    (sc/process (parse-csv in-file))))
 ```
 And for the truly irreverent... (who don't need _computer_ laziness):
 
 ```clojure
-(slurp-csv "test/test.csv")
+(sc/slurp-csv "test/test.csv")
 ```
 ### Writing CSV data
 
@@ -89,14 +90,15 @@ As with the input processing functions, the writer processing functions come in 
 This time let's use `clojure/data.csv`:
 
 ```clojure
-(require '[clojure.data.csv :as cd-csv])
+(require '[semantic-csv.core :as sc]
+         '[clojure.data.csv :as cd-csv])
 
 (def data [{:this 1, :that "2", :more "stuff"}
            {:this 2, :that "3", :more "other yeah"}])
 
 (with-open [out-file (io/writer "test.csv")]
   (->> data
-       (cast-with {:this #(-> % float str)})
+       (sc/cast-with {:this #(-> % float str)})
        vectorize
        (cd-csv/write-csv out-file)))
 ```
@@ -104,7 +106,7 @@ This time let's use `clojure/data.csv`:
 And again, as with the input processing functions, here we also provide a quick and dirty, opinionated convenience function for automating some of this:
 
 ```clojure
-(spit-csv "test2.csv"
+(sc/spit-csv "test2.csv"
           {:cast-fns {:this #(-> % float str)}}
           data)
 ```
