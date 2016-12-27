@@ -52,10 +52,10 @@
                  (flatten [only])
                ; If cast-fns is a map, use those keys
                (map? cast-fns)
-                 (keys cast-fns)
+               (keys cast-fns)
                ; Then assume cast-fns is single fn, and fork on row type
                (map? row)
-                 (keys row)
+               (keys row)
                :else
                  (range (count row)))]
     (reduce (row-val-caster cast-fns exception-handler)
