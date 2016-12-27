@@ -7,26 +7,26 @@
             [clojure-csv.core :as csv]
             [semantic-csv.impl.core :as impl :refer [?>>]]))
 
-;; # Input processing functions
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-;; Note that all of these processing functions return a transducer unless otherwise stated.
-;; This allows for single passes accross collections.
-;;
+;; This namespace contains implementations of the core api's functionality as transducer returning functions.
+;; These functions are offered as part of the public API for anyone interested in using them to compose their own transducers.
+;; This namespace also contains the helper functions seen in core.
 
+
+;; ## Input processing functions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; <br/>
 ;; ## mappify
 
 (defn mappify
-  "Takes a sequence of row vectors, as commonly produced by csv parsing libraries, and returns a sequence of
-  maps. By default, the first row vector will be interpreted as a header, and used as the keys for the maps.
-  However, this and other behaviors are customizable via an optional `opts` map with the following options:
+  "Returns a transducer that transforms row vectors into maps, where keys are taken as the first row or as
+  specified via `:header` option.  Options include:
 
   * `:keyify` - bool; specify whether header/column names should be turned into keywords (default: `true`).
-  * `:header` - specify the header to use for map keys, preventing first row of data from being consumed as header."
+  * `:header` - specify the header to use for map keys, preventing first row of data from being consumed as header.
+  * `:transform-header` - specify a transformation function for each header key (ignored if `:header` or `:keyify` is specified)."
   ([] (mappify {}))
-  ([{:keys [keyify header] :or {keyify true} :as opts}]
+  ([{:as opts :keys [keyify transform-header header] :or {keyify true}}]
    (fn [rf]
      (let [hdr (volatile! (mapv keyword header))]
        (fn
@@ -34,7 +34,10 @@
          ([results] (rf results))
          ([results input]
           (if (empty? @hdr)
-            (do (vreset! hdr (if keyify (mapv keyword input) input))
+            (do (vreset! hdr (cond
+                               transform-header (mapv transform-header input)
+                               keyify (mapv keyword input)
+                               :else input))
                 results)
             (rf results (impl/mappify-row @hdr input)))))))))
 
@@ -59,14 +62,14 @@
 ;; ## structify
 
 (defn structify
-  "Takes a sequence of row vectors, as commonly produced by csv parsing libraries, and returns a sequence of
-  structs. By default, the first row vector will be interpreted as a header, and used as the keys for the structs.
-  However, this and other behaviors are customizable via an optional `opts` map with the following options:
+  "Takes an optional map of input options and returns a transducer.  The transducer transforms row vectors into structs,
+  where keys are taken as the first row or as specified via `:header` option.  This is analogous to mappify.  Options:
 
   * `:keyify` - bool; specify whether header/column names should be turned into keywords (default: `true`).
-  * `:header` - specify the header to use for map keys, preventing first row of data from being consumed as header."
+  * `:header` - specify the header to use for map keys, preventing first row of data from being consumed as header.
+  * `:transform-header` - specify a transformation function for each header key (ignored if `:header` or `:keyify` is specified)."
   ([] (structify {}))
-  ([{:keys [keyify header] :or {keyify true} :as opts}]
+  ([{:as opts :keys [keyify transform-header header] :or {keyify true}}]
    (fn [rf]
      (let [hdr (volatile! header)]
        (fn
@@ -74,7 +77,10 @@
          ([results] (rf results))
          ([results input]
           (if (empty? @hdr)
-            (do (vreset! hdr (if keyify (mapv keyword input) input))
+            (do (vreset! hdr (cond
+                               transform-header (mapv transform-header input)
+                               keyify (mapv keyword input)
+                               :else input))
                 results)
             (rf results (apply struct (apply create-struct @hdr) input)))))))))
 
@@ -85,9 +91,9 @@
 ;;                (structify)
 ;;                (csv/parse-csv in-file))
 ;;
-;;     ({:this "# some comment lines..."}
+;;     [{:this "# some comment lines..."}
 ;;      {:this "1", :that "2", :more "stuff"}
-;;      {:this "2", :that "3", :more "other yeah"})
+;;      {:this "2", :that "3", :more "other yeah"}]
 ;;
 ;; <br/>
 ;;
@@ -98,16 +104,17 @@
 ;; <br/>
 ;; ## remove-comments
 (defn remove-comments
-  "Removes rows which start with a comment character (by default, `#`). Operates by checking whether
-  the first item of every row in the collection matches a comment pattern. Also removes empty lines.
-  Options include:
+  "Returns a transducer that removes rows starting with a comment character (by default, `#`).
+  Operates by checking whether the first item of every row in the collection matches a comment pattern.
+  Also removes empty lines. Options include:
 
   * `:comment-re` - Specify a custom regular expression for determining which lines are commented out.
   * `:comment-char` - Checks for lines lines starting with this char.
 
-  Note: this function only works with rows that are vectors, and so should always be used before mappify."
+  Note: this function only works (or makes sense) with rows that are vectors, and so should always be used
+  before mappify."
   ([] (remove-comments {:comment-re #"^\#"}))
-  ([{:keys [comment-re comment-char]}]
+  ([{:as opts :keys [comment-re comment-char]}]
    (fn [rf]
      (let [commented? (if comment-char
                         #(= comment-char (first %))
@@ -121,17 +128,18 @@
               results
               (rf results input)))))))))
 
-;; Notice the remove-comments is placed before mappify.
-;; We want this done in order.  The order flows from left to right in the compose.
-;; This is a property of transducers.
+;; Let's see this in action.
 ;;
 ;;     => (with-open [in-file (io/reader "test/test.csv")]
 ;;          (into []
 ;;                (comp (remove-comments) (mappify))
 ;;                (csv/parse-csv in-file)))
 ;;
-;;     ({:this "1", :that "2", :more "stuff"}
-;;      {:this "2", :that "3", :more "other yeah"})
+;;     [{:this "1", :that "2", :more "stuff"}
+;;      {:this "2", :that "3", :more "other yeah"}]
+;;
+;; Notice that remove-comments is placed before mappify, because we need comments to be removed before turning into maps.
+;; It's a property of transducers that order flows from left to right in the composition of transducers.
 ;;
 ;; <br/>
 ;; Next, let's observe that `:this` and `:that` point to strings, while they should really be pointing to
@@ -142,9 +150,9 @@
 ;; ## cast-with
 
 (defn cast-with
-  "Casts the vals of each row according to `cast-fns`, which must either be a map of
-  `column-name -> casting-fn` or a single casting function to be applied towards all columns.
-  Additionally, an `opts` map can be used to specify:
+  "Returns a transducer that casts the vals of each row according to `cast-fns`, which must either
+  be a map of `column-name -> casting-fn` or a single casting function to be applied towards all columns.
+  Options include:
 
   * `:except-first` - Leaves the first row unaltered; useful for preserving header row.
   * `:exception-handler` - If cast-fn raises an exception, this function will be called with args
@@ -152,7 +160,7 @@
   * `:only` - Only cast the specified column(s); can be either a single column name, or a vector of them."
   ([cast-fns]
    (cast-with cast-fns {}))
-  ([cast-fns {:keys [except-first exception-handler only] :as opts}]
+  ([cast-fns {:as opts :keys [except-first exception-handler only]}]
    (fn [rf]
      (let [fst (volatile! nil)]
        (fn
@@ -174,8 +182,8 @@
 ;;                      (cast-with {:this #(Integer/parseInt %)}))
 ;;                (csv/parse-csv in-file)))
 ;;
-;;     ({:this 1, :that "2", :more "stuff"}
-;;      {:this 2, :that "3", :more "other yeah"})
+;;     [{:this 1, :that "2", :more "stuff"}
+;;      {:this 2, :that "3", :more "other yeah"}]
 ;;
 ;; Alternatively, if we want to cast multiple columns using a single function, we can do so
 ;; by passing a single casting function as the first argument.
@@ -187,8 +195,8 @@
 ;;                      (cast-with #(Integer/parseInt %) {:only [:this :that]}))
 ;;                (csv/parse-csv in-file)))
 ;;
-;;     ({:this 1, :that 2, :more "stuff"}
-;;      {:this 2, :that 3, :more "other yeah"})
+;;     [{:this 1, :that 2, :more "stuff"}
+;;      {:this 2, :that 3, :more "other yeah"}]
 ;;
 ;; Note that this function handles either map or vector rows.
 ;; In particular, if you’ve imported data without consuming a header (by either not using mappify or
@@ -206,11 +214,12 @@
 ;; ## process
 
 (defn process
-  "This function wraps together the most frequently used input processing capabilities,
-  controlled by an `opts` hash with opinionated defaults:
+  "Returns a transducers that composes the most frequently used input processing capabilities,
+  and is controlled by an `opts` hash with opinionated defaults:
 
   * `:mappify` - bool; transform rows from vectors into maps using `mappify`.
   * `:keyify` - bool; specify whether header/column names should be turned into keywords (default: `true`).
+  * `:transform-header` - specify a transformation function for each header key (ignored if `:header` or `:keyify` is specified).
   * `:header` - specify header to be used in mappify; as per `mappify`, first row will not be consumed as header
   * `:structs` - bool; use structify insead of mappify
   * `:remove-comments` - bool; remove comment lines, as specified by `:comment-re` or `:comment-char`. Also
@@ -231,8 +240,8 @@
      :as opts}]
    (let [map-fn (when mappify
                   (if structs ;; use mappify or structify
-                    (semantic-csv.transducers/structify {:keyify keyify :header header})
-                    (semantic-csv.transducers/mappify {:keyify keyify :header header})))
+                    (semantic-csv.transducers/structify {:keyify keyify :header header :transform-header transform-header})
+                    (semantic-csv.transducers/mappify {:keyify keyify :header header :transform-header transform-header})))
          remove-fn (when remove-comments
                      (semantic-csv.transducers/remove-comments {:comment-re comment-re :comment-char comment-char}))
          cast-with-fn (when cast-fns
@@ -251,19 +260,24 @@
 ;; ## parse-and-process
 
 (defn parse-and-process
-  "This is a convenience function for reading a csv file using `clojure/data.csv` and passing it through `process`
-  with the given set of options (specified _last_ as kw_args, in contrast with our other processing functions).
+  "This is a convenience function for reading a csv file using `clojure-csv` and passing it through `process`
+  with the given set of options (specified _last_ as kw args, in contrast with our other processing functions).
   Note that `:parser-opts` can be specified and will be passed along to `clojure-csv/parse-csv`"
   [csv-readable & {:keys [parser-opts]
                    :or   {parser-opts {}}
                    :as   opts}]
   (let [rest-options (dissoc opts :parser-opts)]
-    (transduce (process rest-options) conj []
+    (into [] (process rest-options)
      (impl/apply-kwargs csv/parse-csv csv-readable parser-opts))))
 
+
+;; Now our example becomes:
+;;
 ;;     (with-open [in-file (io/reader "test/test.csv")]
 ;;         (parse-and-process in-file
 ;;                            :cast-fns {:this #(Integer/parseInt %)}))
+
+;; However, we're not done yet...
 
 
 ;; <br/>
@@ -359,7 +373,7 @@
 ;; ## vectorize
 
 (defn vectorize
-  "Take a sequence of maps, and returns a transducer that transform them into a sequence of vectors. Options:
+  "Returns a transducer that transforms maps into vectors. Options include:
 
   * `:header` - The header to be used. If not specified, this defaults to `(-> rows first keys)`. Only
     values corresponding to the specified header will be included in the output, and will be included in the
@@ -470,7 +484,9 @@
      ; Else assume we already have a file handle
      (let [cast-fn (when cast-fns (cast-with cast-fns))
            vect-fn (when (-> rows first map?) (vectorize {:header header :prepend-header prepend-header}))
-           vect-rows (transduce (apply comp (remove nil? [cast-fn vect-fn (cast-with str)])))]
+           vect-rows (sequence
+                      (apply comp (remove nil? [cast-fn vect-fn (cast-with str)]))
+                      rows)]
        (->> vect-rows
             (batch batch-size)
             (map #(impl/apply-kwargs csv/write-csv % writer-opts))
