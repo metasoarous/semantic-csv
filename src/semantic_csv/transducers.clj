@@ -232,7 +232,7 @@
     `colname, value`, and the result used as the parse value.
   * `:cast-only` - Only cast the specified column(s); can be either a single column name, or a vector of them."
   ([] (process {}))
-  ([{:keys [mappify keyify header remove-comments comment-re comment-char structs cast-fns cast-exception-handler cast-only]
+  ([{:keys [mappify keyify header transform-header remove-comments comment-re comment-char structs cast-fns cast-exception-handler cast-only]
      :or   {mappify         true
             keyify          true
             remove-comments true
