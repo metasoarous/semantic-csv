@@ -115,18 +115,10 @@
   before mappify."
   ([] (remove-comments {:comment-re #"^\#"}))
   ([{:as opts :keys [comment-re comment-char]}]
-   (fn [rf]
-     (let [commented? (if comment-char
-                        #(= comment-char (first %))
-                        (partial re-find comment-re))]
-       (fn
-         ([] (rf))
-         ([results] (rf results))
-         ([results input]
-          (let [x (first input)]
-            (if (and x (commented? x))
-              results
-              (rf results input)))))))))
+   (let [commented? (if comment-char
+                      #(= comment-char (first %))
+                      (partial re-find comment-re))]
+     (remove (comp commented? first)))))
 
 ;; Let's see this in action.
 ;;
@@ -268,7 +260,7 @@
                    :as   opts}]
   (let [rest-options (dissoc opts :parser-opts)]
     (into [] (process rest-options)
-     (impl/apply-kwargs csv/parse-csv csv-readable parser-opts))))
+      (impl/apply-kwargs csv/parse-csv csv-readable parser-opts))))
 
 
 ;; Now our example becomes:
@@ -289,7 +281,7 @@
   [csv-filename & {:as opts}]
   (let [rest-options (dissoc opts :parser-opts)]
     (with-open [in-file (io/reader csv-filename)]
-       (impl/apply-kwargs parse-and-process in-file opts))))
+      (impl/apply-kwargs parse-and-process in-file opts))))
 
 ;; For the ultimate in _programmer_ laziness:
 ;;
