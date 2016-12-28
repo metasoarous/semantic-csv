@@ -2,7 +2,7 @@
 
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/metasoarous/semantic-csv?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-**A Clojure library with higher level CSV parsing/processing functionality.**
+**A Clojure library for higher level CSV parsing/processing functionality.**
 
 The two most popular CSV parsing libraries for Clojure presently - `clojure/data.csv` and `clojure-csv` -
 concern themselves only with the _syntax_ of CSV;
@@ -20,6 +20,7 @@ design phylosophy.
 * Apply casting/formatting functions by column name, while reading or writing
 * Remove commented out lines (by default, those starting with `#`)
 * Compatible with any CSV parsing library returning/writing a sequence of row vectors
+* Transducer versions of all the main functions by requiring `semantic-csv.transducers` instead of `semantic-csv.core`
 * (SOON) A "sniffer" that reads in N lines, and uses them to guess column types
 
 ## Structure
@@ -110,6 +111,20 @@ And again, as with the input processing functions, here we also provide a quick 
 ```
 
 And there you have it.
+
+
+## Transducer API
+
+There is now a transducer API available under the `semantic-csv.transducers` namespace.
+This API is now (or will soon be) in public alpha.
+The API is still subject to change, but we would greatly appreciate feedback.
+
+In particular, we'd appreciate the following feedback:
+ 
+* should transducers hook up differently to io? io is sort of a "reducible" context...
+* how should the namespaces be organized? the transformer versions current live in a mirror api as the core api.
+
+Please see [metasoarous.github.io/semantic-csv](http://metasoarous.github.io/semantic-csv#transducers) for complete documentation.
 
 
 ## Contributing
