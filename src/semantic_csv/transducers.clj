@@ -1,15 +1,14 @@
-;; # Core functionality as Transducers
-;;
-
 (ns semantic-csv.transducers
   "# Transducers API namespace"
   (:require [clojure.java.io :as io]
             [clojure-csv.core :as csv]
-            [semantic-csv.impl.core :as impl :refer [?>>]]))
+            [semantic-csv.impl.core :as impl :refer [?>>]]
+            [semantic-csv.casters :as casters]))
 
 ;; This namespace contains implementations of the core api's functionality as transducer returning functions.
 ;; These functions are offered as part of the public API for anyone interested in using them to compose their own transducers.
 ;; This namespace also contains the helper functions seen in core.
+
 
 
 ;; ## Input processing functions
@@ -290,59 +289,38 @@
 
 
 ;; <br/>
-;; # Some casting functions for your convenience
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-;; These functions can be imported and used in your `:cast-fns` specification.
-;; They focus on handling some of the mess of dealing with numeric casting.
-;; None of these functions are transducers.
+;; # Cating functions
 
-;; ## ->int
+;; Semantic CSV comes complete with a number of casting functions for making your life easier with respect to casting.
 
-(defn ->int
-  "Translate to int from string or other numeric. If string represents a non integer value,
-  it will be rounded down to the nearest int."
-  [v]
-  (if (string? v)
-    (-> v clojure.string/trim Double/parseDouble int)
-    (int v)))
+;; Here we'll `clone` them from their parent namespace for convenience in only having to import one namespace.
+;; This clone macro copies over doc and arglists metadata for your interactive development pleasure.
 
-;; ## ->long
+(impl/clone casters/->idiomatic-keyword)
+(impl/clone casters/->boolean)
+(impl/clone casters/->double)
+(impl/clone casters/->float)
+(impl/clone casters/->long)
+(impl/clone casters/->int)
 
-(defn ->long
-  "Translate to long from string or other numeric. If string represents a non integer value,
-  will be rounded down to the nearest long."
-  [v]
-  (if (string? v)
-    (-> v clojure.string/trim Double/parseDouble long)
-    (long v)))
+;; To see the implementations of these functions, visit the [casters section](#semantic-csv.casters).
 
-;; ## ->float
-
-(defn ->float
-  "Translate to float from string or other numeric."
-  [v]
-  (if (string? v)
-    (-> v clojure.string/trim Float/parseFloat)
-    (float v)))
-
-;; ## ->double
-
-(defn ->double
-  "Translate to double from string or other numeric."
-  [v]
-  (if (string? v)
-    (-> v clojure.string/trim Double/parseDouble)
-    (double v)))
+;; Example usage
 
 ;;     (slurp-csv "test/test.csv"
 ;;                :cast-fns {:this ->int})
+
+;; Additionally, these functions accept a `:nil-fill` argument which allows for specification of what to do with parse failures.
+
+;;     (slurp-csv "test/test.csv"
+;;                :cast-fns {:this (partial ->int {:nil-fill "woops"})})
 
 ;; Note these functions place a higher emphasis on flexibility and convenience than performance, as you can
 ;; likely see from their implementations.
 ;; If maximum performance is a concern for you, and your data is fairly regular, you may be able to get away with
 ;; less robust functions, which shouldn't be hard to implement yourself.
 ;; For most cases though, the performance of those provided here should be fine.
+;; <br/>
 
 
 ;; <br/>

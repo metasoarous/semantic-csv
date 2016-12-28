@@ -68,6 +68,54 @@
   "Check if value is a non-blank string."
   (every-pred string? (complement s/blank?)))
 
+
+;; The following is for copying
+
+(defn- subset-map [m ks]
+  (into {} (map (fn [k] [k (get m k)]) ks)))
+
+(defmacro clone
+  "Clone the var pointed to by fsym into current ns such that arglists, name and doc metadata are preserned."
+  [fsym]
+  (let [v (resolve fsym)
+        m (subset-map (meta v) [:arglists :name :doc])
+        m (update m :arglists (fn [arglists] (list 'quote arglists)))]
+    `(def ~(vary-meta (:name m) (constantly m)) ~fsym)))
+
+
+;; i'm not sure if the above will work for self-compiling cljs; below is some work on this, but it may just not be possible
+;; May have to just catch that case and do a best effort clone without getting all the metadata
+
+;(defn- qualified-name
+;  [m]
+;  (symbol (str (:ns m) "/" (:name m))))
+;
+;(defmacro clone
+;  "Clone a "
+;  [fvar]
+;  (let [;v (resolve fsym)
+;        m' (subset-map (meta fvar) [:arglists :name :doc :ns])
+;        m (subset-map (meta fvar) [:arglists :name :doc])
+;        m (update m :arglists (fn [arglists] (list 'quote arglists)))]
+;    (println m)
+;    `(def ~(vary-meta (:name m) (constantly m)) ~(qualified-name m'))))
+
+(comment
+  (ns whatnot)
+
+  (defn stuff
+    "Shit and yeah"
+    [x y]
+    :yeah)
+
+  (ns semantic-csv.impl.core)
+
+  (clone whatnot/stuff)
+  (meta #'stuff)
+
+  :end)
+
+
 ;; The following is ripped off from prismatic/plumbing:
 
 (defmacro ?>>

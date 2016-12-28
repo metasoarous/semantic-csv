@@ -14,6 +14,7 @@
 ;; * Numeric casting function helpers
 ;; * Remove commented out lines (by default, those starting with `#`)
 ;; * Compatible with any CSV parsing library returning/writing a sequence of row vectors
+;; * [Transducer versions](#semantic-csv.transducers) of all the main functions by requiring `semantic-csv.transducers` instead of `semantic-csv.core`
 ;; * (SOON) A "sniffer" that reads in N lines, and uses them to guess column types
 ;;
 ;; ## Structure
@@ -32,9 +33,9 @@
 (ns semantic-csv.core
   "# Core API namespace"
   (:require [clojure.java.io :as io]
-            [clojure.string :as s]
             [clojure-csv.core :as csv]
             [semantic-csv.impl.core :as impl]
+            [semantic-csv.casters :as casters]
             [semantic-csv.transducers :as td]))
 
 
@@ -307,108 +308,31 @@
 
 
 ;; <br/>
-;; # A Helper function to use with mappify to replace spaces in headers.
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; # Cating functions
 
-;; ## ->idiomatic-keyword
+;; Semantic CSV comes complete with a number of casting functions for making your life easier with respect to casting.
 
-(defn ->idiomatic-keyword
-  "Takes a string, replacing consecutive underscores and spaces with a single dash(-),
-  then returns a keyword based on the transformed string."
-  [x]
-  (-> x (clojure.string/replace #"[ _]+" "-") clojure.string/lower-case keyword))
+;; Here we'll `clone` them from their parent namespace for convenience in only having to import one namespace.
+;; This clone macro copies over doc and arglists metadata for your interactive development pleasure.
 
-;; <br/>
-;; # Some casting functions for your convenience
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-;; These functions can be imported and used in your `:cast-fns` specification.
-;; They focus on handling some of the mess of dealing with numeric casting.
+(impl/clone casters/->idiomatic-keyword)
+(impl/clone casters/->boolean)
+(impl/clone casters/->double)
+(impl/clone casters/->float)
+(impl/clone casters/->long)
+(impl/clone casters/->int)
 
-;; ## ->int
+;; To see the implementations of these functions, visit the [casters section](#semantic-csv.casters).
 
-(defn ->int
-  "Translate to int from string or other numeric. If string represents a non integer value,
-  it will be rounded down to the nearest int.
-
-  An opts map can be specified as the first arguments with the following options:
-  * `:nil-fill` - return this when input is empty/nil."
-  ([x]
-   (->int {} x))
-  ([{:keys [nil-fill]} x]
-   (cond
-     (impl/not-blank? x) (-> x s/trim Double/parseDouble int)
-     (number? x) (int x)
-     :else nil-fill)))
-
-;; ## ->long
-
-(defn ->long
-  "Translate to long from string or other numeric. If string represents a non integer value,
-  will be rounded down to the nearest long.
-
-  An opts map can be specified as the first arguments with the following options:
-  * `:nil-fill` - return this when input is empty/nil."
-  ([x]
-   (->long {} x))
-  ([{:keys [nil-fill]} x]
-   (cond
-     (impl/not-blank? x) (-> x s/trim Double/parseDouble long)
-     (number? x) (long x)
-     :else nil-fill)))
-
-;; ## ->float
-
-(defn ->float
-  "Translate to float from string or other numeric.
-
-  An opts map can be specified as the first arguments with the following options:
-  * `:nil-fill` - return this when input is empty/nil."
-  ([x]
-   (->float {} x))
-  ([{:keys [nil-fill]} x]
-   (cond
-     (impl/not-blank? x) (-> x s/trim Float/parseFloat)
-     (number? x) (float x)
-     :else nil-fill)))
-
-;; ## ->double
-
-(defn ->double
-  "Translate to double from string or other numeric.
-
-  An opts map can be specified as the first arguments with the following options:
-  * `:nil-fill` - return this when input is empty/nil."
-  ([x]
-   (->double {} x))
-  ([{:keys [nil-fill]} x]
-   (cond
-     (impl/not-blank? x) (-> x s/trim Double/parseDouble)
-     (number? x) (double x)
-     :else nil-fill)))
-
-;; ## ->boolean
-
-(defn ->boolean
-  "Translate to boolean from string or other numeric.
-
-  An opts map can be specified as the first arguments with the following options:
-  * `:nil-fill` - return this when input is empty/nil."
-  ([x]
-   (->boolean {} x))
-  ([{:keys [nil-fill]} x]
-   (cond
-     (string? x) (case (-> x s/trim s/lower-case)
-                   ("true" "yes" "t") true
-                   ("false" "no" "f") false
-                   "" nil-fill)
-     (number? x) (not (zero? x))
-     (nil? x) nil-fill
-     :else (boolean x))))
-
+;; Example usage
 
 ;;     (slurp-csv "test/test.csv"
 ;;                :cast-fns {:this ->int})
+
+;; Additionally, these functions accept a `:nil-fill` argument which allows for specification of what to do with parse failures.
+
+;;     (slurp-csv "test/test.csv"
+;;                :cast-fns {:this (partial ->int {:nil-fill "woops"})})
 
 ;; Note these functions place a higher emphasis on flexibility and convenience than performance, as you can
 ;; likely see from their implementations.
@@ -478,6 +402,10 @@
 
 ;; <br/>
 ;; ## batch
+
+
+
+
 
 (defn batch
   "Takes sequence of items and returns a sequence of batches of items from the original
