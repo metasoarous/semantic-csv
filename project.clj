@@ -7,7 +7,8 @@
                  [org.clojure/clojurescript "1.7.228"]
                  [clojure-csv/clojure-csv "2.0.1"]]
   :plugins [[lein-cljsbuild "1.1.4"]]
-  :profiles {:dev {:plugins [[lein-marginalia "0.9.0"]]
+  :profiles {:dev {:plugins [[lein-marginalia "0.9.0"]
+                             [lein-doo "0.1.7"]]
                    :source-paths ["test"]}
              :1.8 {:dependencies [[org.clojure/clojure       "1.8.0" :scope "provided"]
                                   [org.clojure/clojurescript "1.8.51" :scope "provided"]]}
@@ -16,7 +17,13 @@
                    :global-vars  {*print-namespace-maps* false}}}
 
   ;; This was more or less ripped from datascript
-  :cljsbuild {:builds [{:id "release"
+  :cljsbuild {:builds [{:id "test"
+                        :source-paths ["src" "test"]
+                        :compiler {:output-to "target/testable-semantic-csv.js"
+                                   :main semantic-csv.test-runner
+                                   :optimizations :simple}}
+
+                       {:id "release"
                         :source-paths ["src"]
                         :assert false
                         :compiler {:output-to     "release-js/semantic-csv.bare.js"

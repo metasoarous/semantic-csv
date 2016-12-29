@@ -3,8 +3,8 @@
             [semantic-csv.impl.core :as impl]))
 
 ;; <br/>
-;; # A Helper function to use with mappify to replace spaces in headers.
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; # Helper function to use with mappify to replace spaces in header column names
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; ## ->idiomatic-keyword
 
@@ -14,6 +14,7 @@
   [x]
   (-> x (string/replace #"[ _]+" "-") string/lower-case keyword))
 
+
 ;; <br/>
 ;; # Some casting functions for your convenience
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -22,6 +23,7 @@
 ;; They focus on handling some of the mess of dealing with casting to numerics and booleans.
 
 ;; ## ->int
+
 
 (defn ->int
   "Translate to int from string or other numeric. If string represents a non integer value,
@@ -33,7 +35,7 @@
    (->int {} x))
   ([{:keys [nil-fill]} x]
    (cond
-     (impl/not-blank? x) (-> x string/trim Double/parseDouble int)
+     (impl/not-blank? x) (-> x string/trim #?(:clj Double/parseDouble :cljs js/parseFloat) int)
      (number? x) (int x)
      :else nil-fill)))
 
@@ -49,7 +51,7 @@
    (->long {} x))
   ([{:keys [nil-fill]} x]
    (cond
-     (impl/not-blank? x) (-> x string/trim Double/parseDouble long)
+     (impl/not-blank? x) (-> x string/trim #?(:clj Double/parseDouble :cljs js/parseFloat) long)
      (number? x) (long x)
      :else nil-fill)))
 
@@ -64,7 +66,7 @@
    (->float {} x))
   ([{:keys [nil-fill]} x]
    (cond
-     (impl/not-blank? x) (-> x string/trim Float/parseFloat)
+     (impl/not-blank? x) (-> x string/trim #?(:clj Float/parseFloat :cljs js/parseFloat))
      (number? x) (float x)
      :else nil-fill)))
 
@@ -79,7 +81,7 @@
    (->double {} x))
   ([{:keys [nil-fill]} x]
    (cond
-     (impl/not-blank? x) (-> x string/trim Double/parseDouble)
+     (impl/not-blank? x) (-> x string/trim #?(:clj Double/parseDouble :cljs js/parseFloat))
      (number? x) (double x)
      :else nil-fill)))
 

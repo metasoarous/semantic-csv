@@ -1,7 +1,7 @@
 (ns semantic-csv.transducers
   "# Transducers API namespace"
-  (:require [clojure.java.io :as io]
-            [clojure-csv.core :as csv]
+  (:require #?(:clj [clojure.java.io :as io])
+            #?(:clj [clojure-csv.core :as csv])
             [semantic-csv.impl.core :as impl :refer [?>>]]
             [semantic-csv.casters :as casters]))
 
@@ -250,16 +250,17 @@
 ;; <br/>
 ;; ## parse-and-process
 
-(defn parse-and-process
-  "This is a convenience function for reading a csv file using `clojure-csv` and passing it through `process`
-  with the given set of options (specified _last_ as kw args, in contrast with our other processing functions).
-  Note that `:parser-opts` can be specified and will be passed along to `clojure-csv/parse-csv`"
-  [csv-readable & {:keys [parser-opts]
-                   :or   {parser-opts {}}
-                   :as   opts}]
-  (let [rest-options (dissoc opts :parser-opts)]
-    (into [] (process rest-options)
-      (impl/apply-kwargs csv/parse-csv csv-readable parser-opts))))
+#?(:clj
+    (defn parse-and-process
+      "This is a convenience function for reading a csv file using `clojure-csv` and passing it through `process`
+      with the given set of options (specified _last_ as kw args, in contrast with our other processing functions).
+      Note that `:parser-opts` can be specified and will be passed along to `clojure-csv/parse-csv`"
+      [csv-readable & {:keys [parser-opts]
+                       :or   {parser-opts {}}
+                       :as   opts}]
+      (let [rest-options (dissoc opts :parser-opts)]
+        (into [] (process rest-options)
+          (impl/apply-kwargs csv/parse-csv csv-readable parser-opts)))))
 
 
 ;; Now our example becomes:
@@ -274,13 +275,14 @@
 ;; <br/>
 ;; ## slurp-csv
 
-(defn slurp-csv
-  "This convenience function let's you `parse-and-process` csv data given a csv filename. Note that it is _not_
-  lazy, and must read in all data so the file handle can be closed."
-  [csv-filename & {:as opts}]
-  (let [rest-options (dissoc opts :parser-opts)]
-    (with-open [in-file (io/reader csv-filename)]
-      (impl/apply-kwargs parse-and-process in-file opts))))
+#?(:clj
+    (defn slurp-csv
+      "This convenience function let's you `parse-and-process` csv data given a csv filename. Note that it is _not_
+      lazy, and must read in all data so the file handle can be closed."
+      [csv-filename & {:as opts}]
+      (let [rest-options (dissoc opts :parser-opts)]
+        (with-open [in-file (io/reader csv-filename)]
+          (impl/apply-kwargs parse-and-process in-file opts)))))
 
 ;; For the ultimate in _programmer_ laziness:
 ;;
@@ -299,8 +301,8 @@
 (impl/clone casters/->idiomatic-keyword)
 (impl/clone casters/->boolean)
 (impl/clone casters/->double)
-(impl/clone casters/->float)
 (impl/clone casters/->long)
+(impl/clone casters/->float)
 (impl/clone casters/->int)
 
 ;; To see the implementations of these functions, visit the [casters section](#semantic-csv.casters).
@@ -424,47 +426,48 @@
 ;; <br/>
 ;; ## spit-csv
 
-(defn spit-csv
-  "Convenience function for spitting out CSV data to a file using `clojure-csv`.
+#?(:clj
+    (defn spit-csv
+      "Convenience function for spitting out CSV data to a file using `clojure-csv`.
 
-  * `file` - Can be either a filename string, or a file handle.
-  * `opts` - Optional hash of settings.
-  * `rows` - Can be a sequence of either maps or vectors; if the former, vectorize will be
-      called on the input with `:header` argument specifiable through `opts`.
+      * `file` - Can be either a filename string, or a file handle.
+      * `opts` - Optional hash of settings.
+      * `rows` - Can be a sequence of either maps or vectors; if the former, vectorize will be
+          called on the input with `:header` argument specifiable through `opts`.
 
-  The Options hash can have the following mappings:
+      The Options hash can have the following mappings:
 
-  * `:batch-size` - How many rows to format and write at a time?
-  * `:cast-fns` - Formatter(s) to be run on row values. As with `cast-with` function, can be either a map
-     of `column-name -> cast-fn`, or a single function to be applied to all values. Note that `str` is called
-     on all values just before writing regardless of `:cast-fns`.
-  * `:writer-opts` - Options hash to be passed along to `clojure-csv.core/write-csv`.
-  * `:header` - Header to be passed along to `vectorize`, if necessary.
-  * `:prepend-header` - Should the header be prepended to the rows written if `vectorize` is called?"
-  ([file rows]
-   (spit-csv file {} rows))
-  ([file
-    {:keys [batch-size cast-fns writer-opts header prepend-header]
-     :or   {batch-size 20 prepend-header true}
-     :as   opts}
-    rows]
-   (if (string? file)
-     (with-open [file-handle (io/writer file)]
-       (spit-csv file-handle opts rows))
-     ; Else assume we already have a file handle
-     (let [cast-fn (when cast-fns (cast-with cast-fns))
-           vect-fn (when (-> rows first map?) (vectorize {:header header :prepend-header prepend-header}))
-           vect-rows (sequence
-                      (apply comp (remove nil? [cast-fn vect-fn (cast-with str)]))
-                      rows)]
-       (->> vect-rows
-            (batch batch-size)
-            (map #(impl/apply-kwargs csv/write-csv % writer-opts))
-            (reduce
-             (fn [w rowstr]
-               (.write w rowstr)
-               w)
-             file))))))
+      * `:batch-size` - How many rows to format and write at a time?
+      * `:cast-fns` - Formatter(s) to be run on row values. As with `cast-with` function, can be either a map
+         of `column-name -> cast-fn`, or a single function to be applied to all values. Note that `str` is called
+         on all values just before writing regardless of `:cast-fns`.
+      * `:writer-opts` - Options hash to be passed along to `clojure-csv.core/write-csv`.
+      * `:header` - Header to be passed along to `vectorize`, if necessary.
+      * `:prepend-header` - Should the header be prepended to the rows written if `vectorize` is called?"
+      ([file rows]
+       (spit-csv file {} rows))
+      ([file
+        {:keys [batch-size cast-fns writer-opts header prepend-header]
+         :or   {batch-size 20 prepend-header true}
+         :as   opts}
+        rows]
+       (if (string? file)
+         (with-open [file-handle (io/writer file)]
+           (spit-csv file-handle opts rows))
+         ; Else assume we already have a file handle
+         (let [cast-fn (when cast-fns (cast-with cast-fns))
+               vect-fn (when (-> rows first map?) (vectorize {:header header :prepend-header prepend-header}))
+               vect-rows (sequence
+                          (apply comp (remove nil? [cast-fn vect-fn (cast-with str)]))
+                          rows)]
+           (->> vect-rows
+                (batch batch-size)
+                (map #(impl/apply-kwargs csv/write-csv % writer-opts))
+                (reduce
+                 (fn [w rowstr]
+                   (.write w rowstr)
+                   w)
+                 file)))))))
 
 ;; Note that since we use `clojure-csv` here, we offer a `:batch-size` option that lets you format and write small
 ;; batches of rows out at a time, to avoid constructing a massive string representation of all the data in the
