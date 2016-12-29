@@ -327,84 +327,28 @@
 
 ;; ## ->int
 
-(defn ->int
-  "Translate to int from string or other numeric. If string represents a non integer value,
-  it will be rounded down to the nearest int.
-
-  An opts map can be specified as the first arguments with the following options:
-  * `:nil-fill` - return this when input is empty/nil."
-  ([x]
-   (->int {} x))
-  ([{:keys [nil-fill]} x]
-   (cond
-     (impl/not-blank? x) (-> x s/trim Double/parseDouble int)
-     (number? x) (int x)
-     :else nil-fill)))
+(def ->int #'td/->int)
+(alter-meta! #'->int merge (select-keys (meta #'td/->int) [:doc :arglist]))
 
 ;; ## ->long
 
-(defn ->long
-  "Translate to long from string or other numeric. If string represents a non integer value,
-  will be rounded down to the nearest long.
-
-  An opts map can be specified as the first arguments with the following options:
-  * `:nil-fill` - return this when input is empty/nil."
-  ([x]
-   (->long {} x))
-  ([{:keys [nil-fill]} x]
-   (cond
-     (impl/not-blank? x) (-> x s/trim Double/parseDouble long)
-     (number? x) (long x)
-     :else nil-fill)))
+(def ->long #'td/->long)
+(alter-meta! #'->long merge (select-keys (meta #'td/->long) [:doc :arglist]))
 
 ;; ## ->float
 
-(defn ->float
-  "Translate to float from string or other numeric.
-
-  An opts map can be specified as the first arguments with the following options:
-  * `:nil-fill` - return this when input is empty/nil."
-  ([x]
-   (->float {} x))
-  ([{:keys [nil-fill]} x]
-   (cond
-     (impl/not-blank? x) (-> x s/trim Float/parseFloat)
-     (number? x) (float x)
-     :else nil-fill)))
+(def ->float #'td/->float)
+(alter-meta! #'->float merge (select-keys (meta #'td/->float) [:doc :arglist]))
 
 ;; ## ->double
 
-(defn ->double
-  "Translate to double from string or other numeric.
-
-  An opts map can be specified as the first arguments with the following options:
-  * `:nil-fill` - return this when input is empty/nil."
-  ([x]
-   (->double {} x))
-  ([{:keys [nil-fill]} x]
-   (cond
-     (impl/not-blank? x) (-> x s/trim Double/parseDouble)
-     (number? x) (double x)
-     :else nil-fill)))
+(def ->double #'td/->double)
+(alter-meta! #'->double merge (select-keys (meta #'td/->double) [:doc :arglist]))
 
 ;; ## ->boolean
 
-(defn ->boolean
-  "Translate to boolean from string or other numeric.
-
-  An opts map can be specified as the first arguments with the following options:
-  * `:nil-fill` - return this when input is empty/nil."
-  ([x]
-   (->boolean {} x))
-  ([{:keys [nil-fill]} x]
-   (cond
-     (string? x) (case (-> x s/trim s/lower-case)
-                   ("true" "yes" "t") true
-                   ("false" "no" "f") false
-                   "" nil-fill)
-     (number? x) (not (zero? x))
-     (nil? x) nil-fill
-     :else (boolean x))))
+(def ->boolean #'td/->boolean)
+(alter-meta! #'->boolean merge (select-keys (meta #'td/->boolean) [:doc :arglist]))
 
 
 ;;     (slurp-csv "test/test.csv"

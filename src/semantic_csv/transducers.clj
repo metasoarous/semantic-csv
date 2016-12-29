@@ -4,6 +4,7 @@
 (ns semantic-csv.transducers
   "# Transducers API namespace"
   (:require [clojure.java.io :as io]
+            [clojure.string :as s]
             [clojure-csv.core :as csv]
             [semantic-csv.impl.core :as impl :refer [?>>]]))
 
@@ -301,39 +302,82 @@
 
 (defn ->int
   "Translate to int from string or other numeric. If string represents a non integer value,
-  it will be rounded down to the nearest int."
-  [v]
-  (if (string? v)
-    (-> v clojure.string/trim Double/parseDouble int)
-    (int v)))
+  it will be rounded down to the nearest int.
+
+  An opts map can be specified as the first arguments with the following options:
+  * `:nil-fill` - return this when input is empty/nil."
+  ([x]
+   (->int {} x))
+  ([{:keys [nil-fill]} x]
+   (cond
+     (impl/not-blank? x) (-> x s/trim Double/parseDouble int)
+     (number? x) (int x)
+     :else nil-fill)))
 
 ;; ## ->long
 
 (defn ->long
   "Translate to long from string or other numeric. If string represents a non integer value,
-  will be rounded down to the nearest long."
-  [v]
-  (if (string? v)
-    (-> v clojure.string/trim Double/parseDouble long)
-    (long v)))
+  will be rounded down to the nearest long.
+
+  An opts map can be specified as the first arguments with the following options:
+  * `:nil-fill` - return this when input is empty/nil."
+  ([x]
+   (->long {} x))
+  ([{:keys [nil-fill]} x]
+   (cond
+     (impl/not-blank? x) (-> x s/trim Double/parseDouble long)
+     (number? x) (long x)
+     :else nil-fill)))
 
 ;; ## ->float
 
 (defn ->float
-  "Translate to float from string or other numeric."
-  [v]
-  (if (string? v)
-    (-> v clojure.string/trim Float/parseFloat)
-    (float v)))
+  "Translate to float from string or other numeric.
+
+  An opts map can be specified as the first arguments with the following options:
+  * `:nil-fill` - return this when input is empty/nil."
+  ([x]
+   (->float {} x))
+  ([{:keys [nil-fill]} x]
+   (cond
+     (impl/not-blank? x) (-> x s/trim Float/parseFloat)
+     (number? x) (float x)
+     :else nil-fill)))
 
 ;; ## ->double
 
 (defn ->double
-  "Translate to double from string or other numeric."
-  [v]
-  (if (string? v)
-    (-> v clojure.string/trim Double/parseDouble)
-    (double v)))
+  "Translate to double from string or other numeric.
+
+  An opts map can be specified as the first arguments with the following options:
+  * `:nil-fill` - return this when input is empty/nil."
+  ([x]
+   (->double {} x))
+  ([{:keys [nil-fill]} x]
+   (cond
+     (impl/not-blank? x) (-> x s/trim Double/parseDouble)
+     (number? x) (double x)
+     :else nil-fill)))
+
+;; ## ->boolean
+
+(defn ->boolean
+  "Translate to boolean from string or other numeric.
+
+  An opts map can be specified as the first arguments with the following options:
+  * `:nil-fill` - return this when input is empty/nil."
+  ([x]
+   (->boolean {} x))
+  ([{:keys [nil-fill]} x]
+   (cond
+     (string? x) (case (-> x s/trim s/lower-case)
+                   ("true" "yes" "t") true
+                   ("false" "no" "f") false
+                   "" nil-fill)
+     (number? x) (not (zero? x))
+     (nil? x) nil-fill
+     :else (boolean x))))
 
 ;;     (slurp-csv "test/test.csv"
 ;;                :cast-fns {:this ->int})
@@ -424,10 +468,10 @@
 ;; ## batch
 
 (defn batch
-  "Takes sequence of items and returns a sequence of batches of items from the original
-  sequence, at most `n` long."
-  [n rows]
-  (partition n n [] rows))
+  "Returns a transducer that will return a sequence of row batches, where the batch
+  size is n."
+  [n]
+  (partition-all n))
 
 ;; This function can be useful when working with `clojure-csv` when writing lazily.
 ;; The `clojure-csv.core/write-csv` function does not actually write to a file, but just formats the data you
@@ -474,19 +518,18 @@
      (with-open [file-handle (io/writer file)]
        (spit-csv file-handle opts rows))
      ; Else assume we already have a file handle
-     (let [cast-fn (when cast-fns (cast-with cast-fns))
-           vect-fn (when (-> rows first map?) (vectorize {:header header :prepend-header prepend-header}))
+     (let [cast-fn   (when cast-fns (cast-with cast-fns))
+           vect-fn   (when (-> rows first map?) (vectorize {:header header :prepend-header prepend-header}))
            vect-rows (sequence
                       (apply comp (remove nil? [cast-fn vect-fn (cast-with str)]))
                       rows)]
-       (->> vect-rows
-            (batch batch-size)
-            (map #(impl/apply-kwargs csv/write-csv % writer-opts))
-            (reduce
-             (fn [w rowstr]
-               (.write w rowstr)
-               w)
-             file))))))
+       (transduce (comp (batch batch-size)
+                        (map #(impl/apply-kwargs csv/write-csv % writer-opts)))
+                  (fn [w rowstr]
+                    (.write w rowstr)
+                    w)
+                  file
+                  vect-rows)))))
 
 ;; Note that since we use `clojure-csv` here, we offer a `:batch-size` option that lets you format and write small
 ;; batches of rows out at a time, to avoid constructing a massive string representation of all the data in the
