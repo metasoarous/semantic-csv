@@ -191,8 +191,8 @@
 (deftest batch-test
   (let [xs (for [i (range 20)] [i (* i 2)])]
     (testing "makes the right number of batches"
-      (is (= (count (xfcsv/batch 7 xs))
+      (is (= (count (sequence (xfcsv/batch 7) xs))
              3)))
     (testing "doesn't put more things than it should in final batch"
-      (is (= (->> xs (xfcsv/batch 7) last count)
+      (is (= (->> xs (sequence (xfcsv/batch 7)) last count)
              6)))))

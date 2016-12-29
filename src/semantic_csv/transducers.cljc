@@ -291,6 +291,7 @@
 
 
 ;; <br/>
+
 ;; # Cating functions
 
 ;; Semantic CSV comes complete with a number of casting functions for making your life easier with respect to casting.
@@ -404,10 +405,10 @@
 ;; ## batch
 
 (defn batch
-  "Takes sequence of items and returns a sequence of batches of items from the original
-  sequence, at most `n` long."
-  [n rows]
-  (partition n n [] rows))
+  "Returns a transducer that will return a sequence of row batches, where the batch
+  size is n."
+  [n]
+  (partition-all n))
 
 ;; This function can be useful when working with `clojure-csv` when writing lazily.
 ;; The `clojure-csv.core/write-csv` function does not actually write to a file, but just formats the data you
@@ -426,6 +427,7 @@
 ;; <br/>
 ;; ## spit-csv
 
+<<<<<<< HEAD:src/semantic_csv/transducers.cljc
 #?(:clj
     (defn spit-csv
       "Convenience function for spitting out CSV data to a file using `clojure-csv`.
@@ -468,6 +470,48 @@
                    (.write w rowstr)
                    w)
                  file)))))))
+=======
+(defn spit-csv
+  "Convenience function for spitting out CSV data to a file using `clojure-csv`.
+
+  * `file` - Can be either a filename string, or a file handle.
+  * `opts` - Optional hash of settings.
+  * `rows` - Can be a sequence of either maps or vectors; if the former, vectorize will be
+      called on the input with `:header` argument specifiable through `opts`.
+
+  The Options hash can have the following mappings:
+
+  * `:batch-size` - How many rows to format and write at a time?
+  * `:cast-fns` - Formatter(s) to be run on row values. As with `cast-with` function, can be either a map
+     of `column-name -> cast-fn`, or a single function to be applied to all values. Note that `str` is called
+     on all values just before writing regardless of `:cast-fns`.
+  * `:writer-opts` - Options hash to be passed along to `clojure-csv.core/write-csv`.
+  * `:header` - Header to be passed along to `vectorize`, if necessary.
+  * `:prepend-header` - Should the header be prepended to the rows written if `vectorize` is called?"
+  ([file rows]
+   (spit-csv file {} rows))
+  ([file
+    {:keys [batch-size cast-fns writer-opts header prepend-header]
+     :or   {batch-size 20 prepend-header true}
+     :as   opts}
+    rows]
+   (if (string? file)
+     (with-open [file-handle (io/writer file)]
+       (spit-csv file-handle opts rows))
+     ; Else assume we already have a file handle
+     (let [cast-fn   (when cast-fns (cast-with cast-fns))
+           vect-fn   (when (-> rows first map?) (vectorize {:header header :prepend-header prepend-header}))
+           vect-rows (sequence
+                      (apply comp (remove nil? [cast-fn vect-fn (cast-with str)]))
+                      rows)]
+       (transduce (comp (batch batch-size)
+                        (map #(impl/apply-kwargs csv/write-csv % writer-opts)))
+                  (fn [w rowstr]
+                    (.write w rowstr)
+                    w)
+                  file
+                  vect-rows)))))
+>>>>>>> transducers:src/semantic_csv/transducers.clj
 
 ;; Note that since we use `clojure-csv` here, we offer a `:batch-size` option that lets you format and write small
 ;; batches of rows out at a time, to avoid constructing a massive string representation of all the data in the
