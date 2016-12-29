@@ -1,6 +1,7 @@
 (ns semantic-csv.transducers
   "# Transducers API namespace"
   (:require [clojure.java.io :as io]
+            [clojure.string :as s]
             [clojure-csv.core :as csv]
             [semantic-csv.impl.core :as impl :refer [?>>]]
             [semantic-csv.casters :as casters]))
@@ -289,6 +290,7 @@
 
 
 ;; <br/>
+
 ;; # Cating functions
 
 ;; Semantic CSV comes complete with a number of casting functions for making your life easier with respect to casting.
@@ -402,10 +404,10 @@
 ;; ## batch
 
 (defn batch
-  "Takes sequence of items and returns a sequence of batches of items from the original
-  sequence, at most `n` long."
-  [n rows]
-  (partition n n [] rows))
+  "Returns a transducer that will return a sequence of row batches, where the batch
+  size is n."
+  [n]
+  (partition-all n))
 
 ;; This function can be useful when working with `clojure-csv` when writing lazily.
 ;; The `clojure-csv.core/write-csv` function does not actually write to a file, but just formats the data you
@@ -452,19 +454,18 @@
      (with-open [file-handle (io/writer file)]
        (spit-csv file-handle opts rows))
      ; Else assume we already have a file handle
-     (let [cast-fn (when cast-fns (cast-with cast-fns))
-           vect-fn (when (-> rows first map?) (vectorize {:header header :prepend-header prepend-header}))
+     (let [cast-fn   (when cast-fns (cast-with cast-fns))
+           vect-fn   (when (-> rows first map?) (vectorize {:header header :prepend-header prepend-header}))
            vect-rows (sequence
                       (apply comp (remove nil? [cast-fn vect-fn (cast-with str)]))
                       rows)]
-       (->> vect-rows
-            (batch batch-size)
-            (map #(impl/apply-kwargs csv/write-csv % writer-opts))
-            (reduce
-             (fn [w rowstr]
-               (.write w rowstr)
-               w)
-             file))))))
+       (transduce (comp (batch batch-size)
+                        (map #(impl/apply-kwargs csv/write-csv % writer-opts)))
+                  (fn [w rowstr]
+                    (.write w rowstr)
+                    w)
+                  file
+                  vect-rows)))))
 
 ;; Note that since we use `clojure-csv` here, we offer a `:batch-size` option that lets you format and write small
 ;; batches of rows out at a time, to avoid constructing a massive string representation of all the data in the
