@@ -86,7 +86,7 @@ And for the truly irreverent... (who don't need _computer_ laziness):
 ```
 ### Writing CSV data
 
-As with the input processing functions, the writer processing functions come in modular peices you can use as you see fit.
+As with the input processing functions, the writer processing functions come in modular pieces you can use as you see fit.
 This time let's use `clojure/data.csv`:
 
 ```clojure
@@ -99,7 +99,7 @@ This time let's use `clojure/data.csv`:
 (with-open [out-file (io/writer "test.csv")]
   (->> data
        (sc/cast-with {:this #(-> % float str)})
-       vectorize
+       sc/vectorize
        (cd-csv/write-csv out-file)))
 ```
 
@@ -123,7 +123,7 @@ Contributing to the issues with comments, feedback, or requests is also greatly 
 
 ## License
 
-Copyright © 2014 Christopher Small
+Copyright © 2014-2017 Christopher Small
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.
