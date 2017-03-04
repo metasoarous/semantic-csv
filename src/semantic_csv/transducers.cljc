@@ -1,8 +1,8 @@
 (ns semantic-csv.transducers
   "# Transducers API namespace"
-  (:require [clojure.java.io :as io]
-            [clojure.string :as s]
-            [clojure-csv.core :as csv]
+  (:require #?(:clj [clojure.java.io :as io])
+            #?(:clj [clojure.string :as s])
+            #?(:clj [clojure-csv.core :as csv])
             [semantic-csv.impl.core :as impl :refer [?>>]]
             [semantic-csv.casters :as casters]))
 
@@ -61,28 +61,29 @@
 ;; <br/>
 ;; ## structify
 
-(defn structify
-  "Takes an optional map of input options and returns a transducer.  The transducer transforms row vectors into structs,
+#?(:clj
+   (defn structify
+     "Takes an optional map of input options and returns a transducer.  The transducer transforms row vectors into structs,
   where keys are taken as the first row or as specified via `:header` option.  This is analogous to mappify.  Options:
 
   * `:keyify` - bool; specify whether header/column names should be turned into keywords (default: `true`).
   * `:header` - specify the header to use for map keys, preventing first row of data from being consumed as header.
   * `:transform-header` - specify a transformation function for each header key (ignored if `:header` or `:keyify` is specified)."
-  ([] (structify {}))
-  ([{:as opts :keys [keyify transform-header header] :or {keyify true}}]
-   (fn [rf]
-     (let [hdr (volatile! header)]
-       (fn
-         ([] (rf))
-         ([results] (rf results))
-         ([results input]
-          (if (empty? @hdr)
-            (do (vreset! hdr (cond
-                               transform-header (mapv transform-header input)
-                               keyify (mapv keyword input)
-                               :else input))
-                results)
-            (rf results (apply struct (apply create-struct @hdr) input)))))))))
+     ([] (structify {}))
+     ([{:as opts :keys [keyify transform-header header] :or {keyify true}}]
+      (fn [rf]
+        (let [hdr (volatile! header)]
+          (fn
+            ([] (rf))
+            ([results] (rf results))
+            ([results input]
+             (if (empty? @hdr)
+               (do (vreset! hdr (cond
+                                  transform-header (mapv transform-header input)
+                                  keyify           (mapv keyword input)
+                                  :else            input))
+                   results)
+               (rf results (apply struct (apply create-struct @hdr) input))))))))))
 
 ;; Here's an example of structify:
 ;;
@@ -231,9 +232,10 @@
             comment-re      #"^\#"}
      :as opts}]
    (let [map-fn (when mappify
-                  (if structs ;; use mappify or structify
-                    (semantic-csv.transducers/structify {:keyify keyify :header header :transform-header transform-header})
-                    (semantic-csv.transducers/mappify {:keyify keyify :header header :transform-header transform-header})))
+                  #?(:clj (if structs ;; use mappify or structify
+                            (semantic-csv.transducers/structify {:keyify keyify :header header :transform-header transform-header})
+                            (semantic-csv.transducers/mappify {:keyify keyify :header header :transform-header transform-header}))
+                     :cljs (semantic-csv.transducers/mappify {:keyify keyify :header header :transform-header transform-header})))
          remove-fn (when remove-comments
                      (semantic-csv.transducers/remove-comments {:comment-re comment-re :comment-char comment-char}))
          cast-with-fn (when cast-fns
@@ -251,16 +253,17 @@
 ;; <br/>
 ;; ## parse-and-process
 
-(defn parse-and-process
-  "This is a convenience function for reading a csv file using `clojure-csv` and passing it through `process`
+#?(:clj
+   (defn parse-and-process
+     "This is a convenience function for reading a csv file using `clojure-csv` and passing it through `process`
   with the given set of options (specified _last_ as kw args, in contrast with our other processing functions).
   Note that `:parser-opts` can be specified and will be passed along to `clojure-csv/parse-csv`"
-  [csv-readable & {:keys [parser-opts]
-                   :or   {parser-opts {}}
-                   :as   opts}]
-  (let [rest-options (dissoc opts :parser-opts)]
-    (into [] (process rest-options)
-      (impl/apply-kwargs csv/parse-csv csv-readable parser-opts))))
+     [csv-readable & {:keys [parser-opts]
+                      :or   {parser-opts {}}
+                      :as   opts}]
+     (let [rest-options (dissoc opts :parser-opts)]
+       (into [] (process rest-options)
+             (impl/apply-kwargs csv/parse-csv csv-readable parser-opts)))))
 
 
 ;; Now our example becomes:
@@ -275,13 +278,14 @@
 ;; <br/>
 ;; ## slurp-csv
 
-(defn slurp-csv
-  "This convenience function let's you `parse-and-process` csv data given a csv filename. Note that it is _not_
+#?(:clj
+   (defn slurp-csv
+     "This convenience function let's you `parse-and-process` csv data given a csv filename. Note that it is _not_
   lazy, and must read in all data so the file handle can be closed."
-  [csv-filename & {:as opts}]
-  (let [rest-options (dissoc opts :parser-opts)]
-    (with-open [in-file (io/reader csv-filename)]
-      (impl/apply-kwargs parse-and-process in-file opts))))
+     [csv-filename & {:as opts}]
+     (let [rest-options (dissoc opts :parser-opts)]
+       (with-open [in-file (io/reader csv-filename)]
+         (impl/apply-kwargs parse-and-process in-file opts)))))
 
 ;; For the ultimate in _programmer_ laziness:
 ;;
@@ -426,8 +430,9 @@
 ;; <br/>
 ;; ## spit-csv
 
-(defn spit-csv
-  "Convenience function for spitting out CSV data to a file using `clojure-csv`.
+#?(:clj
+   (defn spit-csv
+     "Convenience function for spitting out CSV data to a file using `clojure-csv`.
 
   * `file` - Can be either a filename string, or a file handle.
   * `opts` - Optional hash of settings.
@@ -443,29 +448,29 @@
   * `:writer-opts` - Options hash to be passed along to `clojure-csv.core/write-csv`.
   * `:header` - Header to be passed along to `vectorize`, if necessary.
   * `:prepend-header` - Should the header be prepended to the rows written if `vectorize` is called?"
-  ([file rows]
-   (spit-csv file {} rows))
-  ([file
-    {:keys [batch-size cast-fns writer-opts header prepend-header]
-     :or   {batch-size 20 prepend-header true}
-     :as   opts}
-    rows]
-   (if (string? file)
-     (with-open [file-handle (io/writer file)]
-       (spit-csv file-handle opts rows))
-     ; Else assume we already have a file handle
-     (let [cast-xf (when cast-fns (cast-with cast-fns))
-           vect-xf (when (-> rows first map?) (vectorize {:header header :prepend-header prepend-header}))]
-       (reduce (fn [w rowstr]
-                 (when rowstr
-                   (.write w rowstr))
-                 w)
-               file
-               (sequence (comp (apply comp (remove nil? [cast-xf vect-xf]))
-                               (cast-with str)
-                               (batch batch-size)
-                               (map #(impl/apply-kwargs csv/write-csv % writer-opts)))
-                         rows))))))
+     ([file rows]
+      (spit-csv file {} rows))
+     ([file
+       {:keys [batch-size cast-fns writer-opts header prepend-header]
+        :or   {batch-size 20 prepend-header true}
+        :as   opts}
+       rows]
+      (if (string? file)
+        (with-open [file-handle (io/writer file)]
+          (spit-csv file-handle opts rows))
+                                        ; Else assume we already have a file handle
+        (let [cast-xf (when cast-fns (cast-with cast-fns))
+              vect-xf (when (-> rows first map?) (vectorize {:header header :prepend-header prepend-header}))]
+          (reduce (fn [w rowstr]
+                    (when rowstr
+                      (.write w rowstr))
+                    w)
+                  file
+                  (sequence (comp (apply comp (remove nil? [cast-xf vect-xf]))
+                                  (cast-with str)
+                                  (batch batch-size)
+                                  (map #(impl/apply-kwargs csv/write-csv % writer-opts)))
+                            rows)))))))
 
 ;; Note that since we use `clojure-csv` here, we offer a `:batch-size` option that lets you format and write small
 ;; batches of rows out at a time, to avoid constructing a massive string representation of all the data in the

@@ -33,7 +33,10 @@
    (->int {} x))
   ([{:keys [nil-fill]} x]
    (cond
-     (impl/not-blank? x) (-> x string/trim Double/parseDouble int)
+     (impl/not-blank? x) (-> x string/trim
+                             #?(:clj Double/parseDouble
+                                :cljs js/parseInt)
+                             #?(:clj int))
      (number? x) (int x)
      :else nil-fill)))
 
@@ -49,7 +52,10 @@
    (->long {} x))
   ([{:keys [nil-fill]} x]
    (cond
-     (impl/not-blank? x) (-> x string/trim Double/parseDouble long)
+     (impl/not-blank? x) (-> x string/trim
+                             #?(:clj Double/parseDouble
+                                :cljs js/parseInt)
+                             #?(:clj long))
      (number? x) (long x)
      :else nil-fill)))
 
@@ -64,7 +70,8 @@
    (->float {} x))
   ([{:keys [nil-fill]} x]
    (cond
-     (impl/not-blank? x) (-> x string/trim Float/parseFloat)
+     (impl/not-blank? x) (-> x string/trim #?(:clj Float/parseFloat
+                                              :cljs js/parseFloat))
      (number? x) (float x)
      :else nil-fill)))
 
@@ -79,7 +86,8 @@
    (->double {} x))
   ([{:keys [nil-fill]} x]
    (cond
-     (impl/not-blank? x) (-> x string/trim Double/parseDouble)
+     (impl/not-blank? x) (-> x string/trim #?(:clj Double/parseDouble
+                                              :cljs js/parseFloat))
      (number? x) (double x)
      :else nil-fill)))
 
