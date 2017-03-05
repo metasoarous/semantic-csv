@@ -1,5 +1,6 @@
 (ns semantic-csv.impl.core
   "This namespace consists of implementation details for the main API"
+  #?(:cljs (:require-macros semantic-csv.impl.core))
   (:require [clojure.string :as s]))
 
 
@@ -38,7 +39,7 @@
     (let [cast-fn (if (map? cast-fns) (cast-fns col) cast-fns)]
       (try
         (update-in row [col] cast-fn)
-        (catch Exception e
+        (catch #?(:clj Exception :cljs js/Object) e
           (update-in row [col] (partial exception-handler col)))))))
 
 
@@ -74,13 +75,14 @@
 (defn- subset-map [m ks]
   (into {} (map (fn [k] [k (get m k)]) ks)))
 
-(defmacro clone
-  "Clone the var pointed to by fsym into current ns such that arglists, name and doc metadata are preserned."
-  [fsym]
-  (let [v (resolve fsym)
-        m (subset-map (meta v) [:arglists :name :doc])
-        m (update m :arglists (fn [arglists] (list 'quote arglists)))]
-    `(def ~(vary-meta (:name m) (constantly m)) ~fsym)))
+#?(:clj
+   (defmacro clone
+     "Clone the var pointed to by fsym into current ns such that arglists, name and doc metadata are preserned."
+     [fsym]
+     (let [v (resolve fsym)
+           m (subset-map (meta v) [:arglists :name :doc])
+           m (update m :arglists (fn [arglists] (list 'quote arglists)))]
+       `(def ~(vary-meta (:name m) (constantly m)) ~fsym))))
 
 
 ;; i'm not sure if the above will work for self-compiling cljs; below is some work on this, but it may just not be possible

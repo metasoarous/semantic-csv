@@ -23,6 +23,11 @@
 
 ;; ## ->int
 
+(defn- numberish?
+  [x]
+  #?(:clj (number? x)
+     :cljs (not (js/isNaN x))))
+
 (defn ->int
   "Translate to int from string or other numeric. If string represents a non integer value,
   it will be rounded down to the nearest int.
@@ -33,8 +38,12 @@
    (->int {} x))
   ([{:keys [nil-fill]} x]
    (cond
-     (impl/not-blank? x) (-> x string/trim Double/parseDouble int)
-     (number? x) (int x)
+     (impl/not-blank? x) (-> x
+                             #?(:clj string/trim)
+                             #?(:clj Double/parseDouble
+                                :cljs js/parseInt)
+                             #?(:clj int))
+     (numberish? x) (int x)
      :else nil-fill)))
 
 ;; ## ->long
@@ -49,8 +58,12 @@
    (->long {} x))
   ([{:keys [nil-fill]} x]
    (cond
-     (impl/not-blank? x) (-> x string/trim Double/parseDouble long)
-     (number? x) (long x)
+     (impl/not-blank? x) (-> x
+                             #?(:clj string/trim)
+                             #?(:clj Double/parseDouble
+                                :cljs js/parseInt)
+                             #?(:clj long))
+     (numberish? x) (long x)
      :else nil-fill)))
 
 ;; ## ->float
@@ -64,8 +77,10 @@
    (->float {} x))
   ([{:keys [nil-fill]} x]
    (cond
-     (impl/not-blank? x) (-> x string/trim Float/parseFloat)
-     (number? x) (float x)
+     (impl/not-blank? x) (-> x
+                             #?@(:clj [string/trim Float/parseFloat]
+                                 :cljs [js/parseFloat]))
+     (numberish? x) (float x)
      :else nil-fill)))
 
 ;; ## ->double
@@ -79,8 +94,9 @@
    (->double {} x))
   ([{:keys [nil-fill]} x]
    (cond
-     (impl/not-blank? x) (-> x string/trim Double/parseDouble)
-     (number? x) (double x)
+     (impl/not-blank? x) (-> x #?@(:clj [string/trim Double/parseDouble]
+                                   :cljs [js/parseFloat]))
+     (numberish? x) (double x)
      :else nil-fill)))
 
 ;; ## ->boolean
@@ -98,7 +114,7 @@
                    ("true" "yes" "t") true
                    ("false" "no" "f") false
                    "" nil-fill)
-     (number? x) (not (zero? x))
+     (numberish? x) (not (zero? x))
      (nil? x) nil-fill
      :else (boolean x))))
 
