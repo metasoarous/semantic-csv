@@ -1,4 +1,32 @@
 
+
+# 0.2 releases
+
+## 0.2.1-alpha1
+
+Identical to 0.2
+
+## 0.2.0
+
+This was accidentally an accidental release cause I forgot to add `alpha1` to the end of the new version before deploying -_-,
+Please consider this an unstable alpha release for all intents and purposes.
+However, here's what we've got here so far.
+
+* Add `semantic-csv.transducers` namespace with transducer versions of all the processing functions for greater composability
+* Add `:transform-header` functionality (HT @mahinshaw)
+* Idiomatic header keywords via `semantic-csv.core/->idiomatic-keyword` (HT @mahinshaw)
+* More flexible casting functions with control over what gets returned (HT @bselak)
+* _Possibly_ cljs support, though this hasn't been tested (HT @mahinshaw)
+
+
+<br/>
+
+# 0.1 releases
+
+## 0.1.0
+
+Pretty sure this was a rubber stamp on 0.1.0-alpha4.
+
 ## 0.1.0-alpha4
 
 * Removed dependency on `prismatic/plumbing` for `?>>` operator (was causing dependency conflicts in a project).
