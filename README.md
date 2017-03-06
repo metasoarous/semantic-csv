@@ -21,6 +21,7 @@ design phylosophy.
 * Remove commented out lines (by default, those starting with `#`)
 * Compatible with any CSV parsing library returning/writing a sequence of row vectors
 * Transducer versions of all the main functions by requiring `semantic-csv.transducers` instead of `semantic-csv.core`
+* (UNTESTED) Cljs compatibility
 * (SOON) A "sniffer" that reads in N lines, and uses them to guess column types
 
 ## Structure
@@ -40,14 +41,10 @@ Assuming you're using Leiningen, just add the following to your dependencies:
 
 [![Clojars Project](http://clojars.org/semantic-csv/latest-version.svg)](http://clojars.org/semantic-csv)
 
-If you'd like to use a specific commit, you can also use [`lein-git-deps`](https://github.com/tobyhede/lein-git-deps) to do so by adding the followingto your `project.clj`: 
+Note that this release is still in alpha and is subject to change.
+If you would like a stable release, please use 0.1.0 (and note that 0.2.0 was an accidental release and was supposed to be alpha).
+We're hoping to have a stable 0.2.1 release soon.
 
-
-    :plugins [[lein-git-deps "0.0.1-SNAPSHOT"]]
-    :git-dependencies [["https://github.com/metasoarous/semantic-csv.git"]]
-    :source-paths ["src/<yuourproject>", ".lein-git-deps/semantic-csv/src/"]
-
-Then run `lein git-deps` and you should be good to go.
 
 ## Usage
 
@@ -134,6 +131,17 @@ Please see [metasoarous.github.io/semantic-csv](http://metasoarous.github.io/sem
 Feel free to submit a pull request.
 If you're looking for things to help with, please take a look at the [GH issues](https://github.com/metasoarous/semantic-csv/issues) page.
 Contributing to the issues with comments, feedback, or requests is also greatly appreciated.
+
+
+## Contributors
+
+For a complete list of contributors, see [the GH contributors page](https://github.com/metasoarous/semantic-csv/graphs/contributors).
+
+Of particular note, however:
+
+* [Mark Hinshaw (@mahinshaw)](https://github.com/mahinshaw): Mark has been a major help on many fronts, but most notably for pushing forward the transducers and cljs compatibility work.
+* [Simon Belak (@sbelak)](https://github.com/sbelak): Helped make casting functionality more robust.
+* [Ben Rosas (@ballPointPenguin)](https://github.com/ballPointPenguin): Ben helped set up some of the early testing.
 
 
 ## License
