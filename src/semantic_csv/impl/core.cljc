@@ -76,7 +76,7 @@
   (into {} (map (fn [k] [k (get m k)]) ks)))
 
 #?(:clj
-   (defmacro clone
+   (defmacro clone-var
      "Clone the var pointed to by fsym into current ns such that arglists, name and doc metadata are preserned."
      [fsym]
      (let [v (resolve fsym)
@@ -112,7 +112,7 @@
 
   (ns semantic-csv.impl.core)
 
-  (clone whatnot/stuff)
+  (clone-var whatnot/stuff)
   (meta #'stuff)
 
   :end)

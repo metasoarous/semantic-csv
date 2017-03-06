@@ -320,19 +320,19 @@
 
 (do
   #?@(:clj
-      [(impl/clone casters/->idiomatic-keyword)
-       (impl/clone casters/->boolean)
-       (impl/clone casters/->double)
-       (impl/clone casters/->float)
-       (impl/clone casters/->long)
-       (impl/clone casters/->int)]
+      [(impl/clone-var casters/->idiomatic-keyword)
+       (impl/clone-var casters/->boolean)
+       (impl/clone-var casters/->double)
+       (impl/clone-var casters/->float)
+       (impl/clone-var casters/->long)
+       (impl/clone-var casters/->int)]
       :cljs
       [(def ->idiomatic-keyword casters/->idiomatic-keyword)
-       (def ->boolean casters/->boolean)
-       (def ->double casters/->double)
-       (def ->float casters/->float)
-       (def ->long casters/->long)
-       (def ->int casters/->int)]))
+       (def ->boolean           casters/->boolean)
+       (def ->double            casters/->double)
+       (def ->float             casters/->float)
+       (def ->long              casters/->long)
+       (def ->int               casters/->int)]))
 
 ;; To see the implementations of these functions, visit the [casters section](#semantic-csv.casters).
 
