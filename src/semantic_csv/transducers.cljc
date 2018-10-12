@@ -28,7 +28,9 @@
   ([] (mappify {}))
   ([{:as opts :keys [keyify transform-header header] :or {keyify true}}]
    (fn [rf]
-     (let [hdr (volatile! (mapv keyword header))]
+     (let [hdr (volatile! (if keyify
+                            (mapv keyword header)
+                            header))]
        (fn
          ([] (rf))
          ([results] (rf results))
