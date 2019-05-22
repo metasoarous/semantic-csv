@@ -19,7 +19,11 @@
              {:this "# some comment"})))
     (testing "mappify should not consume header if :header is specified"
       (is (= (first (into [] (mappify {:header ["foo" "bar"]}) data))
-             {:foo "this" :bar "that"})))))
+             {:foo "this" :bar "that"})))
+   (testing "Header should be passed in as is when keyify is falsy"
+     (is (= (first (into [] (mappify {:header ["foo" "bar"]
+                                      :keyify false}) data))
+            {"foo" "this" "bar" "that"}))) ))
 
 
 (deftest structify-test
