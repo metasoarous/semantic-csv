@@ -16,7 +16,7 @@
              {"this" "x" "that" "y"})))
     (testing "mappify should not regard comments"
       (is (= (last (mappify data))
-             {:this "# some comment"})))
+             {:this "# some comment" :that nil})))
     (testing "mappify should not consume header if :header is specified"
       (is (= (first (mappify {:header ["foo" "bar"]} data))
              {:foo "this" :bar "that"})))
