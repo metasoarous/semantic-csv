@@ -19,8 +19,10 @@
 
 (defn mappify-row
   "Translates a single row of values into a map of `colname -> val`, given colnames in `header`."
-  [header row]
-  (zipmap-keys header row))
+  [preserve-header header row]
+  (if preserve-header
+    (zipmap-keys header row)                                ; custom zipmap that will put nil elements
+    (zipmap header row)))                                   ; default zipmap will not put nil row elements
 
 
 (defn apply-kwargs

@@ -75,11 +75,12 @@
     If `:transform-header` is present, this option will be ignored.
   * `:transform-header` - A function that transforms the header/column names for each column.
     This takes precedence over `keyify` and should be a function that takes a string.
+  * `:preserve-header` -  every row will have the full header even if values are missing from the CSV (default: `false`)
   * `:header` - specify the header to use for map keys, preventing first row of data from being consumed as header.
   * `:structs` - bool; use structs instead of hash-maps or array-maps, for performance boost (default: `false`)."
   ([rows]
    (mappify {} rows))
-  ([{:keys [keyify transform-header header structs] :or {keyify true} :as opts}
+  ([{:keys [keyify preserve-header transform-header header structs] :or {keyify true preserve-header false} :as opts}
     rows]
    (let [xform #?(:clj (if structs
                          (td/structify opts)

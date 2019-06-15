@@ -24,9 +24,10 @@
 
   * `:keyify` - bool; specify whether header/column names should be turned into keywords (default: `true`).
   * `:header` - specify the header to use for map keys, preventing first row of data from being consumed as header.
+  * `:preserve-header` - every row will have the full header even if values are missing from the CSV (default: `false`)
   * `:transform-header` - specify a transformation function for each header key (ignored if `:header` or `:keyify` is specified)."
   ([] (mappify {}))
-  ([{:as opts :keys [keyify transform-header header] :or {keyify true}}]
+  ([{:as opts :keys [keyify preserve-header transform-header header] :or {keyify true preserve-header false}}]
    (fn [rf]
      (let [hdr (volatile! (if keyify
                             (mapv keyword header)
@@ -41,7 +42,7 @@
                                keyify (mapv keyword input)
                                :else input))
                 results)
-            (rf results (impl/mappify-row @hdr input)))))))))
+            (rf results (impl/mappify-row preserve-header @hdr input)))))))))
 
 ;; Here's an example using the mappify transducers.
 ;;
