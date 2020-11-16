@@ -4,10 +4,25 @@
   (:require [clojure.string :as s]))
 
 
+(defn zipmap-keys
+  "Returns a map with the keys mapped to the corresponding vals.
+   Will add nil values if vals is smaller than keys."
+  [keys vals]
+  (loop [map {}
+         ks (seq keys)
+         vs (seq vals)]
+    (if ks
+      (recur (assoc map (first ks) (first vs))
+             (next ks)
+             (next vs))
+      map)))
+
 (defn mappify-row
   "Translates a single row of values into a map of `colname -> val`, given colnames in `header`."
-  [header row]
-  (into {} (map vector header row)))
+  [preserve-header header row]
+  (if preserve-header
+    (zipmap-keys header row)                                ; custom zipmap that will put nil elements
+    (zipmap header row)))                                   ; default zipmap will not put nil row elements
 
 
 (defn apply-kwargs

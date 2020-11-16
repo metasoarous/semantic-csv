@@ -17,6 +17,9 @@
     (testing "mappify should not regard comments"
       (is (= (last (mappify data))
              {:this "# some comment"})))
+    (testing ":preserve-header will put nil values"
+      (is (= (last (mappify {:preserve-header true} data))
+             {:this "# some comment" :that nil})))
     (testing "mappify should not consume header if :header is specified"
       (is (= (first (mappify {:header ["foo" "bar"]} data))
              {:foo "this" :bar "that"})))
