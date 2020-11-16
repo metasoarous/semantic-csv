@@ -11,7 +11,7 @@ Semantic CSV takes the next step by giving you tools for addressing the _semanti
 you put it in a form that better reflects what it represents.
 
 See the [introductory blog post](http://www.metasoarous.com/presenting-semantic-csv/) for more information on the
-design phylosophy.
+design philosophy.
 
 ## Features
 
