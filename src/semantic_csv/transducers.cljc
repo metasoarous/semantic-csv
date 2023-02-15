@@ -74,18 +74,20 @@
      ([] (structify {}))
      ([{:as opts :keys [keyify transform-header header] :or {keyify true}}]
       (fn [rf]
-        (let [hdr (volatile! header)]
+        (let [v-basis (volatile! (some->> header (apply create-struct)))]
           (fn
             ([] (rf))
             ([results] (rf results))
             ([results input]
-             (if (empty? @hdr)
-               (do (vreset! hdr (cond
-                                  transform-header (mapv transform-header input)
-                                  keyify           (mapv keyword input)
-                                  :else            input))
-                   results)
-               (rf results (apply struct (apply create-struct @hdr) input))))))))))
+             (if-some [basis @v-basis]
+               (rf results (apply struct basis input))
+               (let [hdr (cond
+                           transform-header (mapv transform-header input)
+                           keyify           (mapv keyword input)
+                           :else            input)]
+                 (when (seq hdr)
+                   (vreset! v-basis (apply create-struct hdr)))
+                 results)))))))))
 
 ;; Here's an example of structify:
 ;;
